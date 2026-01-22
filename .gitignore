@@ -1,0 +1,12 @@
+.Rhistory
+.RData
+*.Rproj.user
+*.Rproj
+*.log
+.snakemake/
+.DS_Store
+~
+raw_files/
+ARMOR/
+gh_repo_k.txt
+scripts/slc38a9_code/
