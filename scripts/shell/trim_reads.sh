@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 
-fastqs="/Users/abrahamquaye/berges_rnaseq/raw_files/raw_fastqs"
-trimdir="/Users/abrahamquaye/berges_rnaseq/results/trimmedReads"
-# fastqcdir="/Users/abrahamquaye/berges_rnaseq/results/fastqc"
+fastqs="/Users/abrahamquaye/myocd_rnaseq/raw_files/merged_fastqs"
+trimdir="/Users/abrahamquaye/myocd_rnaseq/results/trimmedReads"
 
-forReads=( $fastqs/LCS9697*Data1.fq.gz )
-revReads=( $fastqs/LCS9697*Data2.fq.gz )
+forReads=( $fastqs/siO_*_R1_merged.fastq.gz )
+revReads=( $fastqs/siO_*_R2_merged.fastq.gz )
 
 if [ ${#forReads[@]} -ne ${#revReads[@]} ]; then
     echo "Number of forward reads do not match number of reverse reads"
@@ -15,9 +14,9 @@ fi
 mkdir -p $trimdir
 
 for n in ${!forReads[@]}; do
-    fname=$(echo ${forReads[$n]} | cut -d "/" -f 7 | cut -d "_" -f 2,4)
+    fname=$(echo ${forReads[$n]} | cut -d "/" -f 7 | cut -d "." -f 1)
     fread=${forReads[$n]}
-    rname=$(echo ${revReads[$n]} | cut -d "/" -f 7 | cut -d "_" -f 2,4)
+    rname=$(echo ${revReads[$n]} | cut -d "/" -f 7 | cut -d "." -f 1)
     rread=${revReads[$n]}
 
     echo "Trimming $fname and $rname ..."
