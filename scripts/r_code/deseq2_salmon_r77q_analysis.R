@@ -12,8 +12,6 @@ library(ggrepel)
 library(org.Hs.eg.db)
 library(pheatmap)
 library(ggplotify)
-library(patchwork)
-# library(ggforce)
 library(tidyverse)
 
 # ====================================================================
@@ -66,7 +64,7 @@ quant_files <- pull(quant_files, files) %>%
   set_names(pull(quant_files, condition))
 
 # 3. Make a transcript ID to gene ID lookup table ==============================
-gtf <- rtracklayer::import("raw_files/annotations/Homo_sapiens.GRCh38.115.gtf") %>%
+gtf <- rtracklayer::import("raw_files/annotations/Homo_sapiens.GRCh38.115.gtf.gz") %>%
   as.data.frame() 
 
 tx_gene <- gtf %>%
