@@ -10,6 +10,6 @@ mkdir -p $raw_dir/merged_fastqs
 for d in ${fastq_dirs[@]}; do
     dir_name=$(basename $d)
     echo $dir_name
-    cat $d/${dir_name}_L001_R*_001.fastq.gz > $raw_dir/merged_fastqs/${dir_name}_R1_merged.fastq.gz
-    cat $d/${dir_name}_L002_R*_001.fastq.gz > $raw_dir/merged_fastqs/${dir_name}_R2_merged.fastq.gz
+    cat $d/${dir_name}_L00*_R1_001.fastq.gz > $raw_dir/merged_fastqs/${dir_name}_R1_merged.fastq.gz
+    cat $d/${dir_name}_L00*_R2_001.fastq.gz > $raw_dir/merged_fastqs/${dir_name}_R2_merged.fastq.gz
 done

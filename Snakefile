@@ -1,12 +1,3 @@
-##########  GENERATE hg38 FASTA FROM R PACKAGE ####################
-rule make_hg38_fasta:
-    input:
-        "scripts/r_code/make_hg38_fasta.R"
-    output:
-        "raw_files/genome_files/hg38_genome.fa"
-    shell:
-        "{input}"
-
 ############### DOWNLOAD GRCH38 GENOME AND GTF FROM ENSEMBL ################
 rule download_reference_files:
     input:
@@ -158,33 +149,34 @@ rule MultiQC_all_fastqcs:
         multiqc -f -o {mqc_dir} {input}
         """
 ####### MAP READS AND QUANTIFY WITH STAR #############
-# #################### QUANTIFY READS WITH SALMON ####################
-# rule quantify_reads_salmon:
-#     input:
-#         t_fastqs = rules.trim_fastq_files.output.t_fastqs,
-#         salmon_index = rules.build_salmon_genomic_index.output
-#     output:
-#         expand(f"{berges_dir}/results/salmon_quant/quant_{{id}}/quant.sf", \
-#         id = [prefix + str(num) for num in sample_nums])
-#     params:
-#         trim_dir = f"{berges_dir}/results/trimmedReads",
-#         salmon_dir = f"{berges_dir}/results/salmon_quant"
-#     shell:
-#         """
-#         mkdir -p {params.salmon_dir}
+#################### QUANTIFY READS WITH SALMON ####################
+rule quantify_reads_salmon:
+    input:
+        t_fastqs = rules.trim_fastq_files.output.t_fastqs,
+        salmon_index = rules.build_salmon_genomic_index.output
+    output:
+        expand(f"{myocd_dir}/results/salmon_quant/quant_siO_{{id}}/quant.sf", \
+        id = ["GFP_1_S13", "GFP_2_S14", "GFP_3_S15", "MYOCD_1_S16", "MYOCD_2_S17", \
+        "MYOCD_3_S18"])
+    params:
+        trim_dir = f"{myocd_dir}/results/trimmedReads",
+        salmon_dir = f"{myocd_dir}/results/salmon_quant"
+    shell:
+        """
+        mkdir -p {params.salmon_dir}
 
-#         forward_fastqs=( $(ls {input.t_fastqs} | grep '_val_1.fq.gz') )
+        forward_fastqs=( $(ls {input.t_fastqs} | grep '_val_1.fq.gz') )
 
-#         for i in ${{forward_fastqs[@]}}; do
-#             sample_id=$(basename ${{i}} | cut -d "_" -f2);
-#             echo "Quantifying reads for LCS9697_${{sample_id}} ...";
+        for i in ${{forward_fastqs[@]}}; do
+            sample_id=$(basename ${{i}} | cut -d "_" -f 1-4);
+            echo "Quantifying reads for ${{sample_id}} ...";
 
-#             salmon quant -i {input.salmon_index} -l A \\
-#             -1 {params.trim_dir}/LCS9697_${{sample_id}}_Clean_Data1_val_1.fq.gz \\
-#             -2 {params.trim_dir}/LCS9697_${{sample_id}}_Clean_Data2_val_2.fq.gz \\
-#             -p 15 --validateMappings -o {params.salmon_dir}/quant_${{sample_id}};
-#         done
-#         """
+            salmon quant -i {input.salmon_index} -l A \\
+            -1 ${{i}} \\
+            -2 {params.trim_dir}/${{sample_id}}_R2_merged_val_2.fq.gz \\
+            -p 15 --validateMappings -o {params.salmon_dir}/quant_${{sample_id}};
+        done
+        """
          
 # ##################  DESEQ2 DIFFERENTIAL EXPRESSION ANALYSIS OF SALMON QUANT FILES #############
 # rule DESeq2_salmon_DE_analysis:
@@ -289,10 +281,8 @@ rule MultiQC_all_fastqcs:
 ############# RUN COMPLETE WORKFLOW #############
 rule run_workflow:
     input:
-        rules.build_star_genomic_index.output,
-        rules.build_salmon_genomic_index.output,
-        rules.concatenate_same_strand_reads.output,
-        rules.MultiQC_all_fastqcs.output
+        rules.MultiQC_all_fastqcs.output,
+        rules.quantify_reads_salmon.output
         # rules.DESeq2_salmon_DE_analysis.output,
         # rules.plot_deg_barplots.output,
         # rules.functional_enrichment_analysis.output
