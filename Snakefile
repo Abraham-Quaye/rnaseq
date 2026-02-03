@@ -148,7 +148,36 @@ rule MultiQC_all_fastqcs:
         mkdir -p {mqc_dir}
         multiqc -f -o {mqc_dir} {input}
         """
-####### MAP READS AND QUANTIFY WITH STAR #############
+####### MAP READS WITH STAR #############
+rule map_reads_star:
+    input:
+        t_fastqs = rules.trim_fastq_files.output.t_fastqs,
+        star_index = rules.build_star_genomic_index.output.star_genome_dir
+    output:
+        alignments = expand(f"{myocd_dir}/results/star_mapped/{{sample}}/Aligned.sortedByCoord.out.bam", \
+        sample = ["siO_GFP_1_S13", "siO_GFP_2_S14", "siO_GFP_3_S15", "siO_MYOCD_1_S16", \
+        "siO_MYOCD_2_S17", "siO_MYOCD_3_S18"])
+    params:
+        trim_dir = f"{myocd_dir}/results/trimmedReads",
+        star_dir = f"{myocd_dir}/results/star_mapped"
+    shell:
+        """
+        mkdir -p {params.star_dir}
+
+        forward_fastqs=( $(ls {input.t_fastqs} | grep '_val_1.fq.gz') )
+
+        for i in ${{forward_fastqs[@]}}; do
+            sample_id=$(basename ${{i}} | cut -d "_" -f 1-4);
+            echo "Mapping reads for ${{sample_id}} ...";
+
+            STAR --runThreadN 15 --genomeDir {input.star_index} \\
+            --readFilesIn ${{i}} {params.trim_dir}/${{sample_id}}_R2_merged_val_2.fq.gz \\
+            --readFilesCommand "zcat" \\
+            --outFileNamePrefix {params.star_dir}/${{sample_id}}/ \\
+            --outSAMtype BAM SortedByCoordinate
+        done
+        """
+
 #################### QUANTIFY READS WITH SALMON ####################
 rule quantify_reads_salmon:
     input:
