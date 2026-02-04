@@ -33,7 +33,7 @@ rule make_salmon_genomic_index_files:
         # order is important: trxptome must be first in the concatenated file
         cat {input.trxptome} {input.z_genome} > {output.gentrome}
         """
-
+        
 ################ BUILD GRCh38 GENOMIC INDEX FOR MAPPING WITH SALMON ###############
 rule build_salmon_genomic_index:
     input:
@@ -148,13 +148,18 @@ rule MultiQC_all_fastqcs:
         mkdir -p {mqc_dir}
         multiqc -f -o {mqc_dir} {input}
         """
+
 ####### MAP READS WITH STAR #############
-rule map_reads_star:
+rule STAR_map_quant_reads:
     input:
         t_fastqs = rules.trim_fastq_files.output.t_fastqs,
-        star_index = rules.build_star_genomic_index.output.star_genome_dir
+        star_index = rules.build_star_genomic_index.output.star_genome_dir,
+        gtf = rules.build_star_genomic_index.params.unzip_gtf
     output:
-        alignments = expand(f"{myocd_dir}/results/star_mapped/{{sample}}/Aligned.sortedByCoord.out.bam", \
+        bams = expand(f"{myocd_dir}/results/star_mapped/{{sample}}/Aligned.sortedByCoord.out.bam", \
+        sample = ["siO_GFP_1_S13", "siO_GFP_2_S14", "siO_GFP_3_S15", "siO_MYOCD_1_S16", \
+        "siO_MYOCD_2_S17", "siO_MYOCD_3_S18"]),
+        genecounts = expand(f"{myocd_dir}/results/star_mapped/{{sample}}/ReadsPerGene.out.tab", \
         sample = ["siO_GFP_1_S13", "siO_GFP_2_S14", "siO_GFP_3_S15", "siO_MYOCD_1_S16", \
         "siO_MYOCD_2_S17", "siO_MYOCD_3_S18"])
     params:
@@ -170,11 +175,33 @@ rule map_reads_star:
             sample_id=$(basename ${{i}} | cut -d "_" -f 1-4);
             echo "Mapping reads for ${{sample_id}} ...";
 
-            STAR --runThreadN 15 --genomeDir {input.star_index} \\
+            ulimit -n 100000
+
+            STAR --runThreadN 14 --genomeDir {input.star_index} \\
             --readFilesIn ${{i}} {params.trim_dir}/${{sample_id}}_R2_merged_val_2.fq.gz \\
-            --readFilesCommand "zcat" \\
+            --readFilesCommand gzcat \\
             --outFileNamePrefix {params.star_dir}/${{sample_id}}/ \\
-            --outSAMtype BAM SortedByCoordinate
+            --outSAMtype BAM SortedByCoordinate \\
+            --quantMode TranscriptomeSAM GeneCounts \\
+            --sjdbGTFfile {input.gtf} \\
+            --outSAMattributes NH HI AS nM XS \\
+            --limitBAMsortRAM 60000000000;
+        done
+        """
+
+#################### INDEX STAR ALIGNED BAM FILES ####################
+rule index_star_bam_files:
+    input:
+        bams = rules.STAR_map_quant_reads.output.bams
+    output:
+        indexed_bams = expand(f"{myocd_dir}/results/star_mapped/{{sample}}/Aligned.sortedByCoord.out.bam.bai", \
+        sample = ["siO_GFP_1_S13", "siO_GFP_2_S14", "siO_GFP_3_S15", "siO_MYOCD_1_S16", \
+        "siO_MYOCD_2_S17", "siO_MYOCD_3_S18"])
+    shell:
+        """
+        for bam in {input.bams}; do
+            echo "Indexing ${{bam}} ..."
+            samtools index -M -@ 10 ${{bam}}
         done
         """
 
@@ -207,111 +234,50 @@ rule quantify_reads_salmon:
         done
         """
          
-# ##################  DESEQ2 DIFFERENTIAL EXPRESSION ANALYSIS OF SALMON QUANT FILES #############
-# rule DESeq2_salmon_DE_analysis:
-#     input:
-#         salmon_quant = rules.quantify_reads_salmon.output,
-#         r_script = "scripts/r_code/deseq2_salmon_r77q_analysis.R",
-#         r_script2 = "scripts/r_code/DEG_plotting_functions.R",
-#     output:
-#         sigs = expand(f"{berges_dir}/results/r/tables/significant_{{treat}}{{tp}}hr_vs_mock72hr_DEGs.csv", \
-#         treat = ["wt", "r77q"], tp = [4, 8, 12, 24, 72]),
-#         total = expand(f"{berges_dir}/results/r/tables/total_{{treat}}{{tp}}hr_vs_mock72hr_DEGs.csv", \
-#         treat = ["wt", "r77q"], tp = [4, 8, 12, 24, 72]),
-#         r77qvswt_sigs = expand(f"{berges_dir}/results/r/tables/significant_r77q{{tp}}hr_vs_wt{{tp}}hr_DEGs.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         r77qvswt_total = expand(f"{berges_dir}/results/r/tables/total_r77q{{tp}}hr_vs_wt{{tp}}hr_DEGs.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         volcano_fig = expand(f"{berges_dir}/results/r/figures/volcano_{{treat}}{{tp}}hr_vs_mock72hr.pdf", \
-#         treat = ["wt", "r77q"], tp = [4, 8, 12, 24, 72]),
-#         r77qvswt_volcano_fig = expand(f"{berges_dir}/results/r/figures/volcano_r77q{{tp}}hr_vs_wt{{tp}}hr.pdf", \
-#         tp = [4, 8, 12, 24, 72]),
-#         heatmap_fig = expand(f"{berges_dir}/results/r/figures/heatmap_{{treat}}{{tp}}hr_vs_mock72hr.pdf", \
-#         treat = ["wt", "r77q"], tp = [4, 8, 12, 24, 72]),
-#         r77qvswt_heatmap_fig = expand(f"{berges_dir}/results/r/figures/heatmap_r77q{{tp}}hr_vs_wt{{tp}}hr.pdf", \
-#         tp = [8, 24, 72]),
-#         pca_fig_all = f"{berges_dir}/results/r/figures/PCA_all_vs_mock72hr.pdf",
-#         r77qvswt_pca_figs = expand(f"{berges_dir}/results/r/figures/PCA_r77q{{tp}}hr_vs_wt{{tp}}hr.pdf", \
-#         tp = [4, 8, 12, 24, 72]),
-#         corr_fig_all = f"{berges_dir}/results/r/figures/sampleCorrelation_all_vs_mock72hr.pdf",
-#         r77qvswt_corr_figs = expand(f"{berges_dir}/results/r/figures/sampleCorrelation_r77q{{tp}}hr_vs_wt{{tp}}hr.pdf", \
-#         tp = [4, 8, 12, 24, 72]) 
-#     shell:
-#         """
-#         {input.r_script}
-#         rm Rplots.pdf
-#         """
+##################  DESEQ2 DIFFERENTIAL EXPRESSION ANALYSIS OF SALMON QUANT FILES #############
+rule DESeq2_salmon_DE_analysis:
+    input:
+        salmon_quant = rules.quantify_reads_salmon.output,
+        r_script = "scripts/r_code/deseq2_salmon_analysis.R",
+        r_script2 = "scripts/r_code/DEG_plotting_functions.R",
+    output:
+        tables = expand(f"{myocd_dir}/results/r/tables/{{res_type}}_MYOCD_vs_GFP_DEGs.csv", \
+        res_type = ["significant", "total"]),
+        figs = expand(f"{myocd_dir}/results/r/figures/{{fig_type}}_MYOCD_vs_GFP.pdf", \
+        fig_type = ["volcano", "heatmap", "pca", "dists"])
+    shell:
+        """
+        {input.r_script}
+        rm Rplots.pdf
+        """
 
-# ############# PLOT DEG BAR PLOTS #############
+############# PLOT DEG BAR PLOTS #############
 # rule plot_deg_barplots:
-#     input:
-#         deg_files = rules.DESeq2_salmon_DE_analysis.output.sigs,
-#         r_script = "scripts/r_code/plot_DEG_barplot.R"
-#     output:
-#         deg_barplots = f"{berges_dir}/results/r/figures/DEG_levels_barplot.pdf"
-#     shell:
-#         "{input.r_script}"
+#    input:
+#        deg_files = rules.DESeq2_salmon_DE_analysis.output.sigs,
+#        r_script = "scripts/r_code/plot_DEG_barplot.R"
+#    output:
+#        deg_barplots = f"{berges_dir}/results/r/figures/DEG_levels_barplot.pdf"
+#    shell:
+#        "{input.r_script}"
 
-# ############# FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
+############ FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
 # rule functional_enrichment_analysis:
-#     input:
-#         deg_files = rules.DESeq2_salmon_DE_analysis.output.sigs,
-#         r_script = "scripts/r_code/enrichment_analysis.R",
-#         rscript2 = "scripts/r_code/enrichment_analysis_functions.R" 
-#     output:
-#         go_res_vs_mock = expand(f"{berges_dir}/results/r/tables/go_{{contr_name}}_totalDEG_sig.csv", \
-#         contr_name = ["wt4hr_vs_mock72hr", "wt8hr_vs_mock72hr", "wt12hr_vs_mock72hr", \
-#         "wt24hr_vs_mock72hr", "wt72hr_vs_mock72hr", \
-#         "r77q4hr_vs_mock72hr", "r77q8hr_vs_mock72hr", "r77q12hr_vs_mock72hr", \
-#         "r77q24hr_vs_mock72hr", "r77q72hr_vs_mock72hr"]),
-#         go_res_r77qvswt = expand(f"{berges_dir}/results/r/tables/go_r77q{{tp}}hr_vs_wt{{tp}}hr_totalDEG_sig.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         go_res_up_vs_mock = expand(f"{berges_dir}/results/r/tables/go_{{contr_name}}_upDEG_sig.csv", \
-#         contr_name = ["wt4hr_vs_mock72hr", "wt8hr_vs_mock72hr", "wt12hr_vs_mock72hr", \
-#         "wt24hr_vs_mock72hr", "wt72hr_vs_mock72hr", \
-#         "r77q4hr_vs_mock72hr", "r77q8hr_vs_mock72hr", "r77q12hr_vs_mock72hr", \
-#         "r77q24hr_vs_mock72hr", "r77q72hr_vs_mock72hr"]),
-#         go_res_up_r77qvswt = expand(f"{berges_dir}/results/r/tables/go_r77q{{tp}}hr_vs_wt{{tp}}hr_upDEG_sig.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         go_res_down_vs_mock = expand(f"{berges_dir}/results/r/tables/go_{{contr_name}}_downDEG_sig.csv", \
-#         contr_name = ["wt4hr_vs_mock72hr", "wt8hr_vs_mock72hr", "wt12hr_vs_mock72hr", \
-#         "wt24hr_vs_mock72hr", "wt72hr_vs_mock72hr", \
-#         "r77q4hr_vs_mock72hr", "r77q8hr_vs_mock72hr", "r77q12hr_vs_mock72hr", \
-#         "r77q24hr_vs_mock72hr", "r77q72hr_vs_mock72hr"]),
-#         go_res_down_r77qvswt = expand(f"{berges_dir}/results/r/tables/go_r77q{{tp}}hr_vs_wt{{tp}}hr_downDEG_sig.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         kegg_res_vs_mock = expand(f"{berges_dir}/results/r/tables/kegg_{{contr_name}}_totalDEG_sigPathways.csv", \
-#         contr_name = ["wt4hr_vs_mock72hr", "wt8hr_vs_mock72hr", "wt12hr_vs_mock72hr", \
-#         "wt24hr_vs_mock72hr", "wt72hr_vs_mock72hr", \
-#         "r77q4hr_vs_mock72hr", "r77q8hr_vs_mock72hr", "r77q12hr_vs_mock72hr", \
-#         "r77q24hr_vs_mock72hr", "r77q72hr_vs_mock72hr"]),
-#         kegg_res_r77qvswt = expand(f"{berges_dir}/results/r/tables/kegg_r77q{{tp}}hr_vs_wt{{tp}}hr_totalDEG_sigPathways.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         kegg_res_up_vs_mock = expand(f"{berges_dir}/results/r/tables/kegg_{{contr_name}}_upDEG_sigPathways.csv", \
-#         contr_name = ["wt4hr_vs_mock72hr", "wt8hr_vs_mock72hr", "wt12hr_vs_mock72hr", \
-#         "wt24hr_vs_mock72hr", "wt72hr_vs_mock72hr", \
-#         "r77q4hr_vs_mock72hr", "r77q8hr_vs_mock72hr", "r77q12hr_vs_mock72hr", \
-#         "r77q24hr_vs_mock72hr", "r77q72hr_vs_mock72hr"]),
-#         kegg_res_up_r77qvswt = expand(f"{berges_dir}/results/r/tables/kegg_r77q{{tp}}hr_vs_wt{{tp}}hr_upDEG_sigPathways.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         kegg_res_down_vs_mock = expand(f"{berges_dir}/results/r/tables/kegg_{{contr_name}}_downDEG_sigPathways.csv", \
-#         contr_name = ["wt4hr_vs_mock72hr", "wt8hr_vs_mock72hr", "wt12hr_vs_mock72hr", \
-#         "wt24hr_vs_mock72hr", "wt72hr_vs_mock72hr", \
-#         "r77q4hr_vs_mock72hr", "r77q8hr_vs_mock72hr", "r77q12hr_vs_mock72hr", \
-#         "r77q24hr_vs_mock72hr", "r77q72hr_vs_mock72hr"]),
-#         kegg_res_down_r77qvswt = expand(f"{berges_dir}/results/r/tables/kegg_r77q{{tp}}hr_vs_wt{{tp}}hr_downDEG_sigPathways.csv", \
-#         tp = [4, 8, 12, 24, 72]),
-#         kegg_diagrams = directory(f"{berges_dir}/results/r/figures/r77q72hr_vs_wt72hr_kegg_pathway_diagrams")
-#     shell:
-#         """
-#         {input.r_script}
-#         """
+#    input:
+#        deg_files = rules.DESeq2_salmon_DE_analysis.output.sigs,
+#        r_script = "scripts/r_code/enrichment_analysis.R",
+#        rscript2 = "scripts/r_code/enrichment_analysis_functions.R" 
+#    output:
+#    shell:
+#        """
+#        {input.r_script}
+#        """
 
 ############# RUN COMPLETE WORKFLOW #############
 rule run_workflow:
     input:
         rules.MultiQC_all_fastqcs.output,
-        rules.quantify_reads_salmon.output
-        # rules.DESeq2_salmon_DE_analysis.output,
+        rules.index_star_bam_files.output,
+        rules.DESeq2_salmon_DE_analysis.output,
         # rules.plot_deg_barplots.output,
         # rules.functional_enrichment_analysis.output

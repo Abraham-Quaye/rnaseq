@@ -1,55 +1,11 @@
 
-get_quant_files <- function(salmon_files, comparison_name){
-  salmon_file_tbl <- as_tibble(salmon_files, rownames = "sample_name")
-  
-  if(str_detect(comparison_name, "all")){
-    return(salmon_files)
-  }
-  
-  treat_name <- strsplit(comparison_name, "_vs_") %>% unlist()
-  
-  filtered_sal_files <- salmon_file_tbl %>%
-    filter(str_detect(sample_name,  treat_name[[1]]) |
-             str_detect(sample_name,  treat_name[[2]])) 
-  
-  filtered_sal_files %>%
-    pull(value) %>%
-    set_names(filtered_sal_files$sample_name)
-}
-
-get_metadata <- function(full_metadata, comparison_name){
-   if(str_detect(comparison_name, "all")){
-    return(full_metadata)
-   }
-  
-  treat_name <- strsplit(comparison_name, "_vs_") %>% unlist()
-  
-  full_metadata %>%
-    filter(str_detect(treatment, treat_name[[1]]) |
-             str_detect(treatment,  treat_name[[2]])) %>%
-    mutate(treatment = factor(treatment, levels = base::unique(treatment)))
-}
-
-get_sample_names <- function(contr_name, metadata = exp_metadata){
-  
-  treatments <- str_split(contr_name, "_") %>%
-    base::unlist(.) %>% .[c(2,4)]
-  
-  metadata %>% filter(treatment %in% treatments) %>%
-    pull(condition)
-}
-
 plot_volcano <- function(lfc_res_tbl, treatment){
+  
     # extract sample names for plot title
     samplenames <- str_split(treatment, "_") %>%
         base::unlist(.) %>% .[c(2,4)]
     
-    tp <- parse_number(str_extract(samplenames, "\\d{1,2}hr"))
-    cnd <- str_replace(samplenames,
-                       "\\d{1,2}hr", "")
-    
-    plt_title <- base::paste0(tp[[1]], "hr ", toupper(cnd[[1]]), "-Infected VS ",
-                              tp[[2]], "hr ", toupper(cnd[[2]]), "-Infected")
+    plt_title <- "MYOCD VS GFP Control"
     
     # use lfcShrink results for volcano plot
     dff <- lfc_res_tbl %>%
@@ -58,10 +14,6 @@ plot_volcano <- function(lfc_res_tbl, treatment){
                reg = case_when(sig & log2FoldChange > 0 ~ "up",
                                sig & log2FoldChange < 0 ~ "down",
                                TRUE ~ "normal"))
-    
-    genes <- gene_annotations %>% filter(gene_id %in% dff$gene_id)
-    
-    dff <- inner_join(dff, genes, by = "gene_id")
     
     most_sig <- dff %>%
       drop_na(SYMBOL) %>%
@@ -80,7 +32,7 @@ plot_volcano <- function(lfc_res_tbl, treatment){
     
     plt <- dff %>%
         ggplot(aes(log2FoldChange, -log10(padj), colour = reg)) +
-        geom_point(alpha = 0.8, size = 2.5) +
+        geom_point(alpha = 0.7, size = 2.5) +
         geom_text_repel(data = most_sig,
                         aes(log2FoldChange, -log10(padj),
                             label = SYMBOL), max.overlaps = 40,
@@ -123,7 +75,7 @@ plot_volcano <- function(lfc_res_tbl, treatment){
 plot_sample_dists <- function(dds, dds_design, color_grp_feature, row_labs_feature){
     
     # rlog or vst: to stabilize variance across samples:
-    stable_var <- vst(dds, blind = T)
+    stable_var <- rlog(dds, blind = T)
     dists <- dist(t(assay(stable_var)))
     dist_mat <- as.matrix(dists)
     
@@ -134,15 +86,14 @@ plot_sample_dists <- function(dds, dds_design, color_grp_feature, row_labs_featu
     col_grp_features <- pull(col_grp_labs, color_grp_feature) %>% base::unique(.)
     
     ann_colors <- setNames(
-        object = list(hcl.colors(n = length(col_grp_features),
-                                   palette = "Roma") %>%
+        object = list(c("blue", "red") %>%
                           set_names(col_grp_features)),
         nm = color_grp_feature
     )
     
     readable_labels <- base::as.data.frame(colData(dds)[, row_labs_feature,
                                                         drop = F]) %>%
-        pull(condition) %>% toupper(.) %>% str_replace(.,"HR", "hr")
+        pull(condition) %>% toupper(.)
     
     hmap <- pheatmap(dist_mat,
                      annotation_col =  col_grp_labs,
@@ -176,14 +127,12 @@ plot_PCA <- function(dds, dds_design){
 
   plt <- pcaData %>%
     ggplot(aes(PC1, PC2, fill = group)) +
-    geom_point(size = 3.5, shape = 21, color = "#000000", stroke = 0.2) +
+    geom_point(size = 4, shape = 21, color = "#000000", stroke = 0.2) +
     coord_cartesian(clip = "off") +
-    scale_fill_manual(values = hcl.colors(n = length(unique(pcaData[["group"]])),
-                                   palette = "Roma"),
+    scale_fill_manual(values = c("blue", "red"),
                        name = str_to_title(dds_design),
-                       breaks = unique(pcaData[[dds_design]]),
-                      labels = str_replace(toupper(unique(pcaData[[dds_design]])),
-                                           "(\\d{1,2})HR", "_\\1hr")
+                       breaks = levels(pcaData[[dds_design]]),
+                      labels = toupper(levels(pcaData[[dds_design]]))
                          ) +
     labs(x = paste0("PC1: ", pvar[[1]], "% Variance"),
          y = paste0("PC2: ", pvar[[2]], "% Variance")) +
@@ -201,8 +150,7 @@ plot_PCA <- function(dds, dds_design){
           legend.direction = "horizontal",
           legend.key.size = unit(1, "cm"),
           legend.margin = margin(b = -10),
-          legend.key.spacing.y = unit(-10, "pt")) +
-      guides(fill = guide_legend(nrow = 2))
+          legend.key.spacing.y = unit(-10, "pt"))
   
   return(plt)
 }
@@ -215,8 +163,6 @@ plot_PCA <- function(dds, dds_design){
 # Use case: Ideal for visualization (e.g., PCA, heatmaps), clustering, and exploratory analysis.
 # If you're building heatmaps or PCA plots, go with rlog or vst. If you're doing statistical testing or exporting count tables, use the normalized counts.
 plot_topGenes_heatmap <- function(sig_results, contr_name){
-  # sig_results <- full_deseq[["deseq_results"]][[1]]$sig_res[[4]]
-  # contr_name <- full_deseq[["deseq_results"]][[1]]$treatments[[4]]
   
   if(NROW(sig_results) > 50){
     n_topgenes <- 50
@@ -231,13 +177,12 @@ plot_topGenes_heatmap <- function(sig_results, contr_name){
     str_remove(., paste0(feature_remove, "_")) %>%
     toupper(.) %>%
     str_replace_all(., "HR", "hr") %>%
-    paste0("Top", n_topgenes, "DEGs for ", .,
+    paste0("Top", n_topgenes, " DEGs for ", .,
            "\nby Adjusted P-values and Log2(Fold Change)")
   
   # Prepare Matrix to plot
   sample_cols <- contr_name %>%
     str_remove(., paste0(feature_remove, "_")) %>%
-    str_remove_all(., "\\d{1,2}hr") %>%
     str_split(., "_vs_") %>%
     base::unlist()
   
@@ -260,6 +205,7 @@ plot_topGenes_heatmap <- function(sig_results, contr_name){
                    main = title_name,
                    cluster_rows = TRUE,
                    cluster_cols = TRUE,
+                   cellwidth = 30,
                    show_rownames = TRUE,
                    show_colnames = TRUE,
                    color = colorRampPalette(
