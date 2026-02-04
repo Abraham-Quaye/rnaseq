@@ -5,108 +5,60 @@ library(ggtext)
 library(tidyverse)
 
 # the data is located in the "results/tables" folder
-result_path <- "~/berges_rnaseq/results/r/"
-
-# get all file paths
-deg_files <- list.files(paste0(result_path, "tables"),
-                        pattern = "^significant_\\w+\\d{1,2}hr_DEGs\\.csv",
-                        full.names = TRUE)
+result_path <- "~/myocd_rnaseq/results/r/"
 
 # write function to extract data needed for downstream analysis
-get_deg_tables <- function(csv){
-  df <- read_csv(file = csv, id = "contr_name") %>%
-    select(-matches("(r77q|wt|mock)"), -stat) %>%
-    mutate(contr_name = str_replace(contr_name,
-                                    "[/\\w]+significant_(\\w+)_DEGs\\.csv",
-                                    "\\1"))
-  if(str_detect(df$contr_name[[1]], "mock")){
-    df <- df %>%
-      mutate(timepoint = str_remove(contr_name, "_vs_mock72hr") %>%
-               str_extract(., "\\d{1,2}hr") %>%
-             parse_number(.))
-  }else{
-    df <- df %>%
-      mutate(timepoint = str_extract(contr_name, "\\d{1,2}hr") %>%
-               parse_number(.))
-  }
-  return(df)
-}
 
-# read all data into one big dataframe
-deg_data <- map(deg_files, ~get_deg_tables(.x)) %>%
-  list_rbind() %>%
+sig_data <- read_csv(file = paste0(result_path, "tables/significant_MYOCD_vs_GFP_DEGs.csv")) %>%
+    select(-matches("(MYOCD|GFP)")) %>%
   mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
                                 log2FoldChange < 0 ~ "down",
-                                TRUE ~ NA_character_),
-         ref_sample = ifelse(str_detect(contr_name, "mock"),
-                             "All Samples VS Mock", "R77Q VS WT"))
+                                TRUE ~ NA_character_))
 
 ############################# DEG bar plot ##################
-deg_bar_plt <- deg_data %>%
+deg_bar_plt <- sig_data %>%
   summarise(num_genes = n(),
-                   .by = c(ref_sample, regulation, timepoint)) %>%
-  # this fills in combinations with zero counts
-  complete(data = ., ref_sample, regulation, timepoint,
-           fill = list(num_genes = 0)) %>%
-  mutate(timepoint = factor(timepoint, levels = sort(unique(timepoint)))) %>%
-  ggplot(aes(timepoint, num_genes, fill = regulation)) +
-  geom_col(position = position_dodge(0.9)) +
-  facet_wrap(~ref_sample, scales = "free") +
-  geom_text(aes(label = num_genes), position = position_dodge(width = 0.9),
-            vjust = -0.5, fontface = "bold", size = 4) +
-  scale_fill_manual(values = c("#0000FF", "#ff0000"),
-                    breaks = c("down", "up"),
+                   .by = c(regulation)) %>% 
+  ggplot(aes(regulation, num_genes, fill = regulation)) +
+  geom_col(show.legend = F) +
+  geom_text(aes(label = num_genes),
+            vjust = -0.5, fontface = "bold",
+            size = 15, size.unit = "pt") +
+  scale_fill_manual(values = c(down = "#0000FF", up = "#ff0000"),
                     labels = c("Downregulated", "Upregulated")) +
   scale_y_continuous(expand = c(0, 0)) +
-  scale_x_discrete(expand = c(0.16, 0.16),
-                   breaks = c(4, 8, 12, 24, 72),
-                   labels = c("4 hours", "8 hours", "12 hours",
-                              "24 hours", "72 hours")) +
+  scale_x_discrete(breaks = c("down", "up"),
+                   labels = c("Downregulated", "Upregulated")) +
   coord_cartesian(clip = "off") +
-  labs(title = "Differentially Expressed Genes of R77Q HIV-infected Cells<br>Compared to Mock- or Wild Type HIV-infected Cells",
-       y = "Number of Genes",
-       x = NULL,
-       fill = NULL) +
+  labs(title = "Differentially Expressed Genes <br>of MYOCD VS GFP Controls",
+       y = "Number of Genes", x = NULL) +
   theme_classic() +
   theme(plot.margin = margin_auto(4, 4),
         plot.title.position = "plot",
-        plot.title = element_markdown(face = 'bold', size = 18,
+        plot.title = element_markdown(face = 'bold', size = 16,
                                       colour = 'black', hjust = 0.5,
-                                      lineheight = 1.3, vjust = 0.5),
+                                      lineheight = 1.3, vjust = 0.5,
+                                      margin = margin(b = 25, t = 3)),
         panel.background = element_rect(fill = 'white'),
-        panel.grid.major.y = element_line(color = 'grey50',
-                                          linewidth = 0.035,
+        panel.grid.major.y = element_line(color = 'grey50', linewidth = 0.1,
                                           linetype = 1),
         panel.grid.minor = element_line(linewidth = 0.1, colour = "grey50",
                                         linetype = "dashed"),
         panel.spacing.x = unit(5, "pt"),
-        # adjust the facet strip
-        strip.background = element_blank(),
-        strip.placement = "outside",
-        strip.text.x.top = element_text(face = "bold", size = 15,
-                                        colour = "black",
-                                        margin = margin(b = 15, t = 15)),
-        strip.clip = "off",
         #adjust axis
         axis.text.x = element_markdown(size = 12, colour = 'black', face = 'bold',
                                        margin = margin(t = 10)),
         axis.text.y = element_text(size = 15, colour = 'black', face = 'bold',
-                                   margin = margin(l = 10)),
+                                   margin = margin(l = 10, r = 5)),
         axis.title.y = element_text(size = 18,
                                     face = 'bold',
                                     color = 'black'),
-        axis.ticks = element_blank(),
-        legend.justification = c(0,1),
-        legend.position = "inside",
-        legend.position.inside = c(0.05, 0.925),
-        legend.box.background = element_rect(color = "grey60"),
-        legend.text = element_text(face = 'bold', size = 12),
-        legend.background = element_blank(),
-        legend.margin = margin(t = 3, r = 3, b = 3, l = 3),
-        legend.key.size = unit(0.8, "cm"),
-        legend.key.spacing.y = unit(0.2, "cm")
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_line(color = 'grey50', linewidth = 0.1,
+                                    linetype = 1),
+        axis.ticks.length.y = unit(5, "pt")
   )
 
 ggsave(plot = deg_bar_plt,
        filename = paste0(result_path, "figures/DEG_levels_barplot.pdf"),
-       width = 11, height = 8)
+       width = 6, height = 7.5)

@@ -252,14 +252,14 @@ rule DESeq2_salmon_DE_analysis:
         """
 
 ############# PLOT DEG BAR PLOTS #############
-# rule plot_deg_barplots:
-#    input:
-#        deg_files = rules.DESeq2_salmon_DE_analysis.output.sigs,
-#        r_script = "scripts/r_code/plot_DEG_barplot.R"
-#    output:
-#        deg_barplots = f"{berges_dir}/results/r/figures/DEG_levels_barplot.pdf"
-#    shell:
-#        "{input.r_script}"
+rule plot_deg_barplots:
+    input:
+        deg_files = rules.DESeq2_salmon_DE_analysis.output.tables,
+        r_script = "scripts/r_code/plot_DEG_barplot.R"
+    output:
+        deg_barplots = f"{myocd_dir}/results/r/figures/DEG_levels_barplot.pdf"
+    shell:
+        "{input.r_script}"
 
 ############ FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
 # rule functional_enrichment_analysis:
@@ -278,6 +278,6 @@ rule run_workflow:
     input:
         rules.MultiQC_all_fastqcs.output,
         rules.index_star_bam_files.output,
-        rules.DESeq2_salmon_DE_analysis.output,
+        rules.plot_deg_barplots.output,
         # rules.plot_deg_barplots.output,
         # rules.functional_enrichment_analysis.output
