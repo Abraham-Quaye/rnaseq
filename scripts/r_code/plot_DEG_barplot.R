@@ -9,7 +9,9 @@ result_path <- "~/myocd_rnaseq/results/r/"
 
 # write function to extract data needed for downstream analysis
 
-sig_data <- read_csv(file = paste0(result_path, "tables/significant_MYOCD_vs_GFP_DEGs.csv")) %>%
+sig_data <- read_csv(file = paste0(
+  result_path, "tables/significant_MYOCD_vs_GFP_DEGs.csv"
+  )) %>%
     select(-matches("(MYOCD|GFP)")) %>%
   mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
                                 log2FoldChange < 0 ~ "down",

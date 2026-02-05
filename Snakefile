@@ -262,16 +262,26 @@ rule plot_deg_barplots:
         "{input.r_script}"
 
 ############ FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
-# rule functional_enrichment_analysis:
-#    input:
-#        deg_files = rules.DESeq2_salmon_DE_analysis.output.sigs,
-#        r_script = "scripts/r_code/enrichment_analysis.R",
-#        rscript2 = "scripts/r_code/enrichment_analysis_functions.R" 
-#    output:
-#    shell:
-#        """
-#        {input.r_script}
-#        """
+rule functional_enrichment_analysis:
+    input:
+        deg_files = rules.DESeq2_salmon_DE_analysis.output.tables,
+        r_script = "scripts/r_code/enrichment_analysis.R",
+        rscript2 = "scripts/r_code/enrichment_analysis_functions.R" 
+    output:
+        kegg_res = expand(f"{myocd_dir}/results/r/tables/kegg_MYOCD_vs_GFP_{{reg}}DEG_sigPathways.csv", \
+        reg = ["up", "down", "total"]),
+        go_res = expand(f"{myocd_dir}/results/r/tables/go_MYOCD_vs_GFP_{{reg}}DEG_sig.csv", \
+        reg = ["up", "down", "total"]),
+        go_figs = expand(f"{myocd_dir}/results/r/figures/go_MYOCD_vs_GFP_{{reg}}DEG_sig_dotplot.pdf", \
+        reg = ["up", "down", "total"]),
+        kegg_figs = expand(f"{myocd_dir}/results/r/figures/kegg_MYOCD_vs_GFP_{{reg}}DEG_sigPathways_dotplot.pdf", \
+        reg = ["up", "down", "total"]),
+        kegg_diagrams = directory(f"{myocd_dir}/results/r/figures/kegg_pathway_diagrams")
+    shell:
+        """
+        {input.r_script}
+        mv hsa*.pathview.png {output.kegg_diagrams}
+        """
 
 ############# RUN COMPLETE WORKFLOW #############
 rule run_workflow:
@@ -279,5 +289,4 @@ rule run_workflow:
         rules.MultiQC_all_fastqcs.output,
         rules.index_star_bam_files.output,
         rules.plot_deg_barplots.output,
-        # rules.plot_deg_barplots.output,
-        # rules.functional_enrichment_analysis.output
+        rules.functional_enrichment_analysis.output

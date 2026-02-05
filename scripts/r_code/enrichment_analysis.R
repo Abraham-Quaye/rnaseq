@@ -11,62 +11,59 @@ library(ggtext)
 library(tidyverse)
 
 # the data is located in the "results/tables" folder
-result_path <- "~/berges_rnaseq/results/r/"
+result_path <- "~/myocd_rnaseq/results/r/"
 
 # load functions ==================
 source("scripts/r_code/enrichment_analysis_functions.R")
 
 # get all file paths
-deg_files <- list.files(paste0(result_path, "tables"),
-                        pattern = "^significant_\\w+\\d{1,2}hr_DEGs\\.csv",
-                        full.names = TRUE)
 
 # read all data into one big dataframe
-deg_data <- map(deg_files, ~load_deg_results(.x)) %>%
-  list_rbind() %>%
+deg_data <- read_csv(file = paste0(
+  result_path,"tables/significant_MYOCD_vs_GFP_DEGs.csv"
+  )) %>% 
   mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
                                 log2FoldChange < 0 ~ "down",
-                                TRUE ~ NA_character_),
-         ref_sample = ifelse(str_detect(contr_name, "mock"),
-                             "all_vs_mock", "r77q_vs_wt"),
+                                TRUE ~ NA_character_),,
          ENTREZID = as.character(ENTREZID)) %>%
   arrange(padj)
 
 # FUNCTIONAL ENRICHMENT ANALYSES =======================================
 
 # Perform functional enrichment analyses
-enrich_result <- deg_data %>%
-  nest(data = -contr_name) %>%
-  mutate(all_g_list = map(data, ~pull(.x, log2FoldChange) %>% # for plot_kegg_pathway
-                            set_names(., .x$ENTREZID)),
-         up_genes = map(data, ~get_subset_genes(genes_tbl = .x, reg = "up")),
-         down_genes = map(data, ~get_subset_genes(genes_tbl = .x, reg = "down")),
-         # KEGG results
-         total_kegg = map(data, ~enrichKEGG(gene = .x$ENTREZID)),
-         up_kegg = map(up_genes, ~enrichKEGG(gene = .x$ENTREZID)),
-         down_kegg = map(down_genes, ~enrichKEGG(gene = .x$ENTREZID)),
-         # KEGG dotplots
-         total_kegg_dotplot = map2(total_kegg, contr_name,
-                                   ~plot_dotplot(res = .x, labb = .y)),
-         up_kegg_dotplot = map2(up_kegg, contr_name,
-                                   ~plot_dotplot(res = .x, labb = .y)),
-         down_kegg_dotplot = map2(down_kegg, contr_name,
-                                   ~plot_dotplot(res = .x, labb = .y)),
-         # GO results ================
-         # for goplot
-         total_go_bp = map(data, ~get_go_enrich(.x, "BP")),
-         total_go_bp_connects = map(total_go_bp, ~goplot(.x)),
-         total_go_all = map(data, ~get_go_enrich(.x, "ALL")),
-         up_go_all = map(up_genes, ~get_go_enrich(.x, "ALL")),
-         down_go_all = map(down_genes, ~get_go_enrich(.x, "ALL")),
-         # GO dotplots
-         total_go_dotplot = map2(total_go_all, contr_name,
-                                 ~plot_dotplot(res = .x, labb = .y)),
-         up_go_dotplot = map2(up_go_all, contr_name,
-                              ~plot_dotplot(res = .x, labb = .y)),
-         down_go_dotplot = map2(down_go_all, contr_name,
-                                ~plot_dotplot(res = .x, labb = .y))
-         )
+enrich_result <- tibble(
+  data = list(deg_data),
+  contr_name = "MYOCD_vs_GFP",
+  all_g_list = map(data, ~pull(.x, log2FoldChange) %>% # for plot_kegg_pathway
+                     set_names(., .x$ENTREZID)),
+  up_genes = map(data, ~get_subset_genes(genes_tbl = .x, reg = "up")),
+  down_genes = map(data, ~get_subset_genes(genes_tbl = .x, reg = "down")),
+  # KEGG results
+  total_kegg = map(data, ~enrichKEGG(gene = .x$ENTREZID)),
+  up_kegg = map(up_genes, ~enrichKEGG(gene = .x$ENTREZID)),
+  down_kegg = map(down_genes, ~enrichKEGG(gene = .x$ENTREZID)),
+  # KEGG dotplots
+  total_kegg_dotplot = map2(total_kegg, contr_name,
+                            ~plot_dotplot(res = .x, labb = .y)),
+  up_kegg_dotplot = map2(up_kegg, contr_name,
+                         ~plot_dotplot(res = .x, labb = .y)),
+  down_kegg_dotplot = map2(down_kegg, contr_name,
+                           ~plot_dotplot(res = .x, labb = .y)),
+  # GO results ================
+  # for goplot
+  total_go_bp = map(data, ~get_go_enrich(.x, "BP")),
+  total_go_bp_connects = map(total_go_bp, ~goplot(.x)),
+  total_go_all = map(data, ~get_go_enrich(.x, "ALL")),
+  up_go_all = map(up_genes, ~get_go_enrich(.x, "ALL")),
+  down_go_all = map(down_genes, ~get_go_enrich(.x, "ALL")),
+  # GO dotplots
+  total_go_dotplot = map2(total_go_all, contr_name,
+                          ~plot_dotplot(res = .x, labb = .y)),
+  up_go_dotplot = map2(up_go_all, contr_name,
+                       ~plot_dotplot(res = .x, labb = .y)),
+  down_go_dotplot = map2(down_go_all, contr_name,
+                         ~plot_dotplot(res = .x, labb = .y))
+)
 
 # Save enrichment results =====================
 # Save all KEGG enrichment results
@@ -124,18 +121,12 @@ save_go_dotplots(dotplots = enrich_result$down_go_dotplot,
 
 # Plot KEGG Pathway Diagrams
 kegg_to_plot <- enrich_result %>%
-  filter(contr_name == "r77q72hr_vs_wt72hr") %>%
-  pull(total_kegg) %>% .[[1]]
+  pull(total_kegg) %>% pluck(1)
 
-kegg_to_plot_data <- enrich_result %>%
-  filter(contr_name == "r77q72hr_vs_wt72hr") 
-
-genes_to_plot <- kegg_to_plot_data %>%
+genes_to_plot <- enrich_result %>%
   pull(all_g_list) %>% unlist()
 
-kegg_diagram_dir <- paste0(result_path, "figures/",
-                           pull(kegg_to_plot_data, contr_name),
-                           "_kegg_pathway_diagrams")
+kegg_diagram_dir <- paste0(result_path, "figures/kegg_pathway_diagrams")
 
 dir.create(kegg_diagram_dir, recursive = T)
 orig_wd <- getwd()

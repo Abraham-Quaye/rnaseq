@@ -1,23 +1,3 @@
-######### Extract data needed for downstream analysis
-load_deg_results <- function(csv){
-  df <- read_csv(file = csv, id = "contr_name") %>%
-    select(-matches("(r77q|wt|mock)"), -stat, -pvalue) %>%
-    mutate(contr_name = str_replace(contr_name,
-                                    "[/\\w]+significant_(\\w+)_DEGs\\.csv",
-                                    "\\1"))
-  if(str_detect(df$contr_name[[1]], "mock")){
-    df <- df %>%
-      mutate(timepoint = str_remove(contr_name, "_vs_mock72hr") %>%
-               str_extract(., "\\d{1,2}hr") %>%
-             parse_number(.))
-  }else{
-    df <- df %>%
-      mutate(timepoint = str_extract(contr_name, "\\d{1,2}hr") %>%
-               parse_number(.))
-  }
-  return(df)
-}
-
 ######## Subset significant results for just up or down regulated genes
 get_subset_genes <- function(genes_tbl, reg){
   genes_tbl %>%
@@ -25,19 +5,6 @@ get_subset_genes <- function(genes_tbl, reg){
     filter(regulation == reg) %>%
     distinct(ENTREZID, .keep_all = T) %>%
     select(-regulation)
-}
-
-####################### For GO Analysis #######################
-get_go_enrich <- function(genes_tbl, ontology){
-  enrichGO(gene = genes_tbl$gene_id,
-           keyType = "ENSEMBL",
-           OrgDb = org.Hs.eg.db,
-           ont = ontology,
-           # universe = raw_data$gene_id,
-           pAdjustMethod = "BH",
-           pvalueCutoff = 0.05,
-           qvalueCutoff = 0.05,
-           readable = T)
 }
 
 ####### Dotplots ==============================
@@ -53,11 +20,22 @@ plot_dotplot <- function(res, labb){
     object = res,
     showCategory = num_cat,
     title = paste0("Top ", num_cat, " Enriched for ",
-                   str_replace_all(str_replace_all(toupper(labb), "HR", "hr"),
-                            "_", " ")),
+                   str_replace_all(toupper(labb), "_", " ")),
     font.size = 10.5
   ) +
     theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
+}
+
+####################### For GO Analysis #######################
+get_go_enrich <- function(genes_tbl, ontology){
+  enrichGO(gene = genes_tbl$gene_id,
+           keyType = "ENSEMBL",
+           OrgDb = org.Hs.eg.db,
+           ont = ontology,
+           pAdjustMethod = "BH",
+           pvalueCutoff = 0.05,
+           qvalueCutoff = 0.05,
+           readable = T)
 }
 
 save_kegg_results <- function(res, contr_name, labb){
