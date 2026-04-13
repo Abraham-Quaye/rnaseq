@@ -1,18 +1,20 @@
 #!/usr/bin/env Rscript --vanilla
 
 library(magrittr)
-library(Homo.sapiens)
+library(Mus.musculus)
 library(clusterProfiler)
 library(enrichplot)
-library(org.Hs.eg.db)
+library(org.Mm.eg.db)
 library(pathview)
 library(ggrepel)
 library(ggtext)
+library(ggarchery)
 library(tidyverse)
 
 # the data is located in the "results/tables" folder
-result_path <- "~/myocd_rnaseq/results/r/"
+result_path <- "~/bm_fn_rnaseq/results/r/"
 
+contr <- "FN_vs_BM"
 # load functions ==================
 source("scripts/r_code/enrichment_analysis_functions.R")
 
@@ -20,7 +22,7 @@ source("scripts/r_code/enrichment_analysis_functions.R")
 
 # read all data into one big dataframe
 deg_data <- read_csv(file = paste0(
-  result_path,"tables/significant_MYOCD_vs_GFP_DEGs.csv"
+  result_path,"tables/significant_" , contr, "_DEGs.csv"
   )) %>% 
   mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
                                 log2FoldChange < 0 ~ "down",
@@ -33,15 +35,18 @@ deg_data <- read_csv(file = paste0(
 # Perform functional enrichment analyses
 enrich_result <- tibble(
   data = list(deg_data),
-  contr_name = "MYOCD_vs_GFP",
+  contr_name = contr,
   all_g_list = map(data, ~pull(.x, log2FoldChange) %>% # for plot_kegg_pathway
                      set_names(., .x$ENTREZID)),
   up_genes = map(data, ~get_subset_genes(genes_tbl = .x, reg = "up")),
   down_genes = map(data, ~get_subset_genes(genes_tbl = .x, reg = "down")),
   # KEGG results
-  total_kegg = map(data, ~enrichKEGG(gene = .x$ENTREZID)),
-  up_kegg = map(up_genes, ~enrichKEGG(gene = .x$ENTREZID)),
-  down_kegg = map(down_genes, ~enrichKEGG(gene = .x$ENTREZID)),
+  total_kegg = map(data, ~enrichKEGG(gene = .x$ENTREZID,
+                                     organism = "mmu")),
+  up_kegg = map(up_genes, ~enrichKEGG(gene = .x$ENTREZID,
+                                      organism = "mmu")),
+  down_kegg = map(down_genes, ~enrichKEGG(gene = .x$ENTREZID,
+                                          organism = "mmu")),
   # KEGG dotplots
   total_kegg_dotplot = map2(total_kegg, contr_name,
                             ~plot_dotplot(res = .x, labb = .y)),

@@ -91,9 +91,10 @@ plot_sample_dists <- function(dds, dds_design, color_grp_feature, row_labs_featu
         nm = color_grp_feature
     )
     
+ 
     readable_labels <- base::as.data.frame(colData(dds)[, row_labs_feature,
                                                         drop = F]) %>%
-        pull(condition) %>% toupper(.)
+        rownames(.) %>% toupper(.)
     
     hmap <- pheatmap(dist_mat,
                      annotation_col =  col_grp_labs,
@@ -123,11 +124,13 @@ plot_PCA <- function(dds, dds_design){
                      intgroup = dds_design,
                      returnData = T,
                      ntop = base::nrow(dds))
+  
   pvar <- round(attr(pcaData, "percentVar") * 100)
 
   plt <- pcaData %>%
     ggplot(aes(PC1, PC2, fill = group)) +
     geom_point(size = 4, shape = 21, color = "#000000", stroke = 0.2) +
+    stat_ellipse(segments = 100, linetype = "dashed") +
     coord_cartesian(clip = "off") +
     scale_fill_manual(values = c("blue", "red"),
                        name = str_to_title(dds_design),

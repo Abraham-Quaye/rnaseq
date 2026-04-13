@@ -6,9 +6,9 @@ library(ashr)
 library(magrittr)
 library(tximport)
 library(AnnotationDbi)
-library(Homo.sapiens)
+library(Mus.musculus)
 library(ggrepel)
-library(org.Hs.eg.db)
+library(org.Mm.eg.db)
 library(pheatmap)
 library(ggplotify)
 library(patchwork)
@@ -17,39 +17,36 @@ library(tidyverse)
 # ====================================================================
 # TRANSCRIPT ABUNDANCE ANALYSIS WITH DEseq2
 # ====================================================================
-home_path <- "~/myocd_rnaseq"
+home_path <- "~/bm_fn_rnaseq"
 result_path <- paste0(home_path, "/results/")
 
 # 1. Read in experiment metadata (colData) =============================
 exp_metadata <- tibble(sample_name = dir(paste0(result_path, "salmon_quant")) %>%
                          str_remove(., "quant_"),
-                       treatment = ifelse(str_detect(sample_name, "GFP"),
-                                          "GFP", "MYOCD"),
-                       sample_num = str_remove_all(
-                         str_extract(sample_name, "_\\d_"), "_"
-                         ),
-                       condition = paste0(treatment, sample_num)) %>%
-  select(-sample_num) %>%
+                       treatment = ifelse(str_detect(sample_name, "BM"),
+                                          "BM", "FN")) %>%
   mutate(treatment = factor(treatment, levels = base::unique(treatment))) %>%
   base::as.data.frame() %>%
-  set_rownames(.$condition)
+  set_rownames(.$sample_name)
   
 
 # 2. Read in salmon quantification files ==========================================
-quant_files <- data.frame(files = list.files(list.dirs(paste0(result_path, "salmon_quant"),
-                                                       recursive = F),
-                                             pattern = "quant.sf", full.names = T)) %>%
+quant_files <- data.frame(
+  files = list.files(list.dirs(paste0(result_path, "salmon_quant"),
+                     recursive = F), pattern = "quant.sf",
+                     full.names = T)
+) %>%
   mutate(sample_name = map_chr(files,
-                               ~sub(".+quant_(siO_(GFP|MYOCD)_\\d_S\\d{2})/quant\\.sf",
+                               ~sub(".+quant_((BM|FN)\\d{1,4})/quant\\.sf",
                                     "\\1", .x))) %>%
-  left_join(., exp_metadata, by = "sample_name") %>%
-  select(condition, files)
+  left_join(., exp_metadata, by = "sample_name")
+
 
 quant_files <- pull(quant_files, files) %>%
-  set_names(pull(quant_files, condition))
+  set_names(pull(quant_files, sample_name))
 
 # 3. Make a transcript ID to gene ID lookup table ==============================
-gtf <- rtracklayer::import("raw_files/annotations/Homo_sapiens.GRCh38.115.gtf") %>%
+gtf <- rtracklayer::import("raw_files/annotations/Mus_musculus.GRCm39.gtf.gz") %>%
   as.data.frame() 
 
 tx_gene <- gtf %>%
@@ -81,7 +78,7 @@ deseq_obj <- DESeqDataSetFromTximport(txi = count_matrix,
 # 6.1 Include additional gene annotations ==============================
 genes <- rownames(count_matrix$abundance)
 
-genes <- AnnotationDbi::select(Homo.sapiens, keys = genes,
+genes <- AnnotationDbi::select(Mus.musculus, keys = genes,
                                columns = c('SYMBOL','GENENAME', "ENTREZID"),
                                keytype = 'ENSEMBL') %>%
   distinct(ENSEMBL, .keep_all = T) %>% 
@@ -98,7 +95,7 @@ gene_annotations <- left_join(gene_name_map, genes,
 mcols(deseq_obj) <- DataFrame(mcols(deseq_obj), gene_annotations)
 
 # 6.2 Change reference sample for comparisons ==========================
-deseq_obj$treatment <- relevel(deseq_obj$treatment, ref = "GFP")
+deseq_obj$treatment <- relevel(deseq_obj$treatment, ref = "BM")
 
 dds <- DESeq(deseq_obj)
 resultsNames(dds)
@@ -124,7 +121,7 @@ deseq_results <- tibble(local_dds = list(dds),
                                                      type = "apeglm")),
                         lfc_results_tbl = map(lfc_results,
                                               ~as_tibble(.x, rownames = "gene_id") %>%
-                                                dplyr::arrange(padj) %>%
+                                                arrange(padj) %>%
                                                 drop_na(padj) %>%
                                                 left_join(., gene_annotations,
                                                           by = "gene_id") %>%
@@ -136,8 +133,8 @@ deseq_results <- tibble(local_dds = list(dds),
                         total_res = map2(norm_counts, lfc_results_tbl,
                                          \(.x, .y) inner_join(.x, .y,
                                                               by = "gene_id") %>%
-                                           dplyr::select(-c(baseMean, lfcSE)) %>%
-                                           dplyr::select(gene_id, ENTREZID,
+                                           select(-c(baseMean, lfcSE)) %>%
+                                           select(gene_id, ENTREZID,
                                                          SYMBOL, GENENAME,
                                                          everything()) %>%
                                            arrange(padj)),
@@ -182,7 +179,7 @@ map2(.x = deseq_results$heatmaps, .y = treatment_labels,
 ggsave(plot = plot_sample_dists(
   dds = dds, dds_design = as.character(dds@design)[[2]],
   color_grp_feature = as.character(dds@design)[[2]],
-  row_labs_feature = "condition"),
+  row_labs_feature = as.character(dds@design)[[2]]),
   filename = paste0(figs_path, "dists", treatment_labels, ".pdf"),
   height = 4, width = 5)
 

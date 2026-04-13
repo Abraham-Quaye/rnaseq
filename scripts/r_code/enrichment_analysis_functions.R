@@ -30,7 +30,7 @@ plot_dotplot <- function(res, labb){
 get_go_enrich <- function(genes_tbl, ontology){
   enrichGO(gene = genes_tbl$gene_id,
            keyType = "ENSEMBL",
-           OrgDb = org.Hs.eg.db,
+           OrgDb = org.Mm.eg.db,
            ont = ontology,
            pAdjustMethod = "BH",
            pvalueCutoff = 0.05,
@@ -95,7 +95,7 @@ save_go_dotplots <- function(dotplots, contr_name, labb){
 ############## Function to plot KEGG Pathway Diagrams #############
 plot_kegg_pathway <- function(id, gene_list, path_){
   pathview(gene.data = gene_list,
-           species = "hsa",
+           species = "mmu",
            pathway.id = id,
            res = 500,
            kegg.dir = path_,
@@ -104,6 +104,7 @@ plot_kegg_pathway <- function(id, gene_list, path_){
            mid = list(gene = "grey", cpd = "grey"),
            high = list(gene = "red", cpd = "red"),
            map.null = T)
+  
   return("Complete")
 }
 safe_kegg_plotter <- safely(plot_kegg_pathway)

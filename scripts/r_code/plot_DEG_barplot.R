@@ -5,14 +5,14 @@ library(ggtext)
 library(tidyverse)
 
 # the data is located in the "results/tables" folder
-result_path <- "~/myocd_rnaseq/results/r/"
+result_path <- "~/bm_fn_rnaseq/results/r/" 
 
 # write function to extract data needed for downstream analysis
 
 sig_data <- read_csv(file = paste0(
-  result_path, "tables/significant_MYOCD_vs_GFP_DEGs.csv"
+  result_path, "tables/significant_FN_vs_BM_DEGs.csv"
   )) %>%
-    select(-matches("(MYOCD|GFP)")) %>%
+    select(-matches("(FN|BM)")) %>%
   mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
                                 log2FoldChange < 0 ~ "down",
                                 TRUE ~ NA_character_))
@@ -22,17 +22,17 @@ deg_bar_plt <- sig_data %>%
   summarise(num_genes = n(),
                    .by = c(regulation)) %>% 
   ggplot(aes(regulation, num_genes, fill = regulation)) +
-  geom_col(show.legend = F) +
+  geom_col(show.legend = F, color = "#000000", linewidth = 0.3) +
   geom_text(aes(label = num_genes),
             vjust = -0.5, fontface = "bold",
             size = 15, size.unit = "pt") +
-  scale_fill_manual(values = c(down = "#0000FF", up = "#ff0000"),
+  scale_fill_manual(values = c(down = "#0000FF", up = "red3"),
                     labels = c("Downregulated", "Upregulated")) +
   scale_y_continuous(expand = c(0, 0)) +
   scale_x_discrete(breaks = c("down", "up"),
                    labels = c("Downregulated", "Upregulated")) +
   coord_cartesian(clip = "off") +
-  labs(title = "Differentially Expressed Genes <br>of MYOCD VS GFP Controls",
+  labs(title = "Differentially Expressed Genes <br>of FN VS BM",
        y = "Number of Genes", x = NULL) +
   theme_classic() +
   theme(plot.margin = margin_auto(4, 4),
