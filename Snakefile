@@ -167,7 +167,14 @@ rule functional_enrichment_analysis:
     shell:
         """
         {input.r_script}
-        mv mmu*.pathview.png {output.kegg_diagrams}
+        # test if kegg diagrams were generated and move them to the output directory
+        path_figs=( mmu*.pathview.png )
+        if [[ -e "${{path_figs[0]}}" ]]; then
+            echo "Moving KEGG pathway diagrams to correct directory ..."
+            mv mmu*.pathview.png {output.kegg_diagrams}
+        else
+            echo "No KEGG pathway diagrams were generated."
+        fi
         """
 
 ############# RUN COMPLETE WORKFLOW #############
