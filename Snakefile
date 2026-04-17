@@ -144,7 +144,9 @@ rule plot_deg_barplots:
         deg_files = rules.DESeq2_salmon_DE_analysis.output.tables,
         r_script = "scripts/r_code/plot_DEG_barplot.R"
     output:
-        deg_barplots = f"{proj_dir}/results/r/figures/DEG_levels_barplot.pdf"
+        f"{proj_dir}/results/r/figures/DEG_levels_barplot.pdf",
+        f"{proj_dir}/results/r/figures/DEG_levels_piechart1.pdf",
+        f"{proj_dir}/results/r/figures/DEG_levels_piechart2.pdf"
     shell:
         "{input.r_script}"
 
@@ -163,7 +165,10 @@ rule functional_enrichment_analysis:
         reg = ["up", "down", "total"]),
         kegg_figs = expand(f"{proj_dir}/results/r/figures/kegg_FN_vs_BM_{{reg}}DEG_sigPathways_dotplot.pdf", \
         reg = ["up", "down", "total"]),
-        kegg_diagrams = directory(f"{proj_dir}/results/r/figures/kegg_pathway_diagrams")
+        kegg_diagrams = directory(f"{proj_dir}/results/r/figures/kegg_pathway_diagrams"),
+        cnet_fig = f"{proj_dir}/results/r/figures/cnet_enrich_pathways.pdf",
+        filt_dotplot = f"{proj_dir}/results/r/figures/kegg_FN_vs_BM_interestPathways_dotplot.pdf",
+        chord_fig = f"{proj_dir}/results/r/figures/kegg_FN_vs_BM_chordplot.pdf"
     shell:
         """
         {input.r_script}
@@ -174,6 +179,10 @@ rule functional_enrichment_analysis:
             mv mmu*.pathview.png {output.kegg_diagrams}
         else
             echo "No KEGG pathway diagrams were generated."
+        fi
+        
+        if [[ -e "Rplot.pdf" ]]; then
+            rm Rplot.pdf
         fi
         """
 

@@ -23,7 +23,8 @@ plot_dotplot <- function(res, labb){
                    str_replace_all(toupper(labb), "_", " ")),
     font.size = 10.5
   ) +
-    theme(plot.title = element_text(face = "bold", size = 15, hjust = 0.5))
+    theme(plot.title = element_text(face = "bold",
+                                    size = 15, hjust = 0.5))
 }
 
 ####################### For GO Analysis #######################

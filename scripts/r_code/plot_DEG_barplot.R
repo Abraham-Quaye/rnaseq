@@ -19,8 +19,7 @@ sig_data <- read_csv(file = paste0(
 
 ############################# DEG bar plot ##################
 deg_bar_plt <- sig_data %>%
-  summarise(num_genes = n(),
-                   .by = c(regulation)) %>% 
+  summarise(num_genes = n(), .by = c(regulation)) %>% 
   ggplot(aes(regulation, num_genes, fill = regulation)) +
   geom_col(show.legend = F, color = "#000000", linewidth = 0.3) +
   geom_text(aes(label = num_genes),
@@ -64,3 +63,79 @@ deg_bar_plt <- sig_data %>%
 ggsave(plot = deg_bar_plt,
        filename = paste0(result_path, "figures/DEG_levels_barplot.pdf"),
        width = 6, height = 7.5)
+
+
+
+
+p2 <- sig_data %>%
+  summarise(num_genes = n(), .by = c(regulation)) %>%
+  mutate(total = sum(num_genes)) %>%
+  mutate(percent = round((num_genes/total) * 100, 2)) %>% 
+  ggplot(aes(regulation, percent, fill = regulation)) +
+  geom_col(width = 1, linewidth = 0.3) +
+  geom_text(aes(label = paste0(num_genes, "\n(", percent, "%)"), y = percent/2),
+            vjust = 0.5, hjust = 0.5, fontface = "bold", color = "#ffffff",
+            size = 15, size.unit = "pt") +
+  scale_fill_manual(name = NULL,
+                    values = c(down = "#0000FF", up = "red3"),
+                    labels = c("Downregulated", "Upregulated")) +
+  coord_radial(expand = F) +
+  theme(axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "inside",
+        legend.position.inside = c(0.5, 0.95),
+        legend.background = element_blank(),
+        legend.key = element_rect(color = NA),
+        legend.key.spacing.x = unit(30, "pt"),
+        legend.key.height = unit(5, "pt"),
+        legend.key.width = unit(10, "pt"),
+        legend.text = element_text(size = 12, face = "bold",
+                                   margin = margin(l = 3)),
+        legend.direction = "horizontal",
+        legend.text.position = "right")
+
+ggsave(plot = p2,
+       filename = paste0(result_path, "figures/DEG_levels_piechart1.pdf"),
+       width = 4, height = 4)
+
+plot_data <- sig_data %>%
+  summarise(num_genes = n(), .by = c(regulation)) %>%
+  mutate(total = sum(num_genes)) %>%
+  mutate(percent = round((num_genes/total) * 100, 2)) 
+
+p3 <- plot_data %>% 
+  ggplot(aes(x = 1, percent, fill = regulation)) +
+  geom_col(width = 1) +
+  annotate(geom = "text", x = 1, y = c(25, 75),
+           label = c(paste0(plot_data$num_genes[[1]],
+                          "\n(", plot_data$percent[[1]], "%)"),
+                     paste0(plot_data$num_genes[[2]],
+                            "\n(", plot_data$percent[[2]], "%)")),
+           fontface = "bold", color = "#ffffff",
+           size = 15, size.unit = "pt"
+           ) +
+  scale_fill_manual(name = NULL,
+                    values = c(down = "#0000FF", up = "red3"),
+                    labels = c("Downregulated", "Upregulated")) +
+  coord_radial(expand = F, theta = "y") +
+  theme(axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "inside",
+        legend.position.inside = c(0.5, 0.95),
+        legend.background = element_blank(),
+        legend.key = element_rect(color = NA),
+        legend.key.spacing.x = unit(30, "pt"),
+        legend.key.height = unit(5, "pt"),
+        legend.key.width = unit(10, "pt"),
+        legend.text = element_text(size = 12, face = "bold",
+                                   margin = margin(l = 3)),
+        legend.direction = "horizontal",
+        legend.text.position = "right")
+
+ggsave(plot = p3,
+       filename = paste0(result_path, "figures/DEG_levels_piechart2.pdf"),
+       width = 4.5, height = 4.5)
+
+
