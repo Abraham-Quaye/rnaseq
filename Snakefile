@@ -131,7 +131,11 @@ rule DESeq2_salmon_DE_analysis:
         tables = expand(f"{proj_dir}/results/r/tables/{{res_type}}_FN_vs_BM_DEGs.csv", \
         res_type = ["significant", "total"]),
         figs = expand(f"{proj_dir}/results/r/figures/{{fig_type}}_FN_vs_BM.pdf", \
-        fig_type = ["volcano", "heatmap", "pca", "dists"])
+        fig_type = ["volcano", "heatmap", "pca", "dists"]),
+        receptor_figs = expand(f"{proj_dir}/results/r/figures/{{fig_name}}.pdf", \
+        fig_name = ["receptors_heatmap1_allSamples", "receptors_heatmap1_threeSamples", \
+        "receptors_heatmap2", "receptors_composite_heatmaps_allSamples", \
+        "receptors_composite_heatmaps_threeSamples"])
     shell:
         """
         {input.r_script}
