@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - bioconda
   - r
+  - genomedk
   - nodefaults
 dependencies:
   - pigz
@@ -12,18 +13,24 @@ dependencies:
   - graphviz
   - salmon
   - fastqc
+  - falco
   - cutadapt
   - bedtools
   - ucsc-bedgraphtobigwig
   - pandoc
   - tbb
   - samtools
-  - hisat2
-  - stringtie
   - trim-galore
   - multiqc
   - igv
   - igvtools
+  - fastp
+  - pandas
+  - numpy
+  - scipy
+  - xlrd
+  - openpyxl
+  - r-essentials
   - r-base
   - r-tidyverse
   - r-furrr
@@ -44,12 +51,26 @@ dependencies:
   - r-flextable
   - r-officer
   - r-dt
+  - r-writexl
   - r-ggVennDiagram
   - r-ggvenn
   - r-ashr
   - r-gprofiler2
   - r-msigdbr
   - r-ggplotify
+  - r-seurat
+  - r-seurat-data
+  - r-doubletFinder
+  - r-sccatch
+  - r-azimuth
+  - r-remotes
+  - r-harmony
+  - r-circlize
+  - r-ggpubr
+  - r-ggh4x
+  - r-viridis
+  - r-presto
+  - r-ggtangle
   - bioconductor-complexheatmap
   - bioconductor-rfastp
   - bioconductor-rsamtools
@@ -75,3 +96,13 @@ dependencies:
   - bioconductor-clusterProfiler
   - bioconductor-tximport
   - bioconductor-tximportdata
+  - bioconductor-singler
+  - bioconductor-celldex
+  - bioconductor-scrnaseq
+  - bioconductor-org.mm.eg.db
+  - bioconductor-mus.musculus
+  - bioconductor-BSgenome.mmusculus.UCSC.mm10
+  - bioconductor-TxDb.mmusculus.ucsc.mm10.knownGene
+  - bioconductor-ensdb.mmusculus.v79
+  - bioconductor-glmgampoi
+  - bioconductor-geoquery
