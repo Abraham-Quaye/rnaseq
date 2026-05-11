@@ -12,6 +12,7 @@ dependencies:
   - graphviz
   - salmon
   - fastqc
+  - falco
   - cutadapt
   - bedtools
   - ucsc-bedgraphtobigwig
@@ -56,6 +57,9 @@ dependencies:
   - r-msigdbr
   - r-ggplotify
   - r-seurat
+  - r-seurat-data
+  - r-azimuth
+  - r-remotes
   - r-harmony
   - r-circlize
   - r-ggpubr
@@ -97,3 +101,4 @@ dependencies:
   - bioconductor-TxDb.mmusculus.ucsc.mm10.knownGene
   - bioconductor-ensdb.mmusculus.v79
   - bioconductor-glmgampoi
+  - bioconductor-geoquery
