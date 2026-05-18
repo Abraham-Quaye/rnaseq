@@ -3,7 +3,6 @@ channels:
   - conda-forge
   - bioconda
   - r
-  - genomedk
   - nodefaults
 dependencies:
   - pigz
@@ -60,8 +59,6 @@ dependencies:
   - r-ggplotify
   - r-seurat
   - r-seurat-data
-  - r-doubletFinder
-  - r-sccatch
   - r-azimuth
   - r-remotes
   - r-harmony
@@ -70,6 +67,7 @@ dependencies:
   - r-ggh4x
   - r-viridis
   - r-presto
+  - r-soupx
   - r-ggtangle
   - bioconductor-complexheatmap
   - bioconductor-rfastp
@@ -97,6 +95,7 @@ dependencies:
   - bioconductor-tximport
   - bioconductor-tximportdata
   - bioconductor-singler
+  - bioconductor-scdblfinder
   - bioconductor-celldex
   - bioconductor-scrnaseq
   - bioconductor-org.mm.eg.db
