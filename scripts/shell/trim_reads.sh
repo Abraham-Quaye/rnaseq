@@ -1,7 +1,7 @@
 #!/opt/homebrew/bin/bash
 
-fastqdir="/Users/abrahamquaye/bm_fn_rnaseq/raw_files/raw_fastqs"
-trimdir="/Users/abrahamquaye/bm_fn_rnaseq/results/trimmedReads"
+fastqdir="/Users/abrahamquaye/bulk_slc38a9_rnaseq_aq/raw_files/raw_fastqs"
+trimdir="/Users/abrahamquaye/bulk_slc38a9_rnaseq_aq/results/trimmedReads"
 
 forReads=( $fastqdir/*_R1_001.fastq.gz )
 revReads=( $fastqdir/*_R2_001.fastq.gz )
