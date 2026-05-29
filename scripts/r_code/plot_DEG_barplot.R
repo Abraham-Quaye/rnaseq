@@ -13,149 +13,165 @@ deg_files <- list.files(paste0(result_path, "tables"),
                         full.names = TRUE)
 
 
-map(deg_files, ~read_csv(file = .x, id = "contr_name") %>%
+sig_data <- map(deg_files, ~read_csv(file = .x, id = "contr_name") %>%
     select(-matches("(12hr|24hr|NoAC)"), -DEFINITION) %>%
     mutate(contr_name = str_replace(contr_name,
                                     "[/\\w]+significant_(\\w+)_DEGs\\.csv",
                                     "\\1"),
-           ref_sample = str_remove(contr_name, "\\w+_vs_"))) %>%
-  list_rbind() %>% count(ref_sample)
-
-# read all data into one big dataframe
-deg_data <- map(deg_files, ~get_deg_tables(.x)) %>%
+           timepoint = ifelse(
+             str_detect(contr_name, "^\\d{2}hr"),
+             parse_number(str_extract(contr_name, "^\\d{2}hr")) %>%
+               as.character(.),
+             "NoAC"),
+           genotype = str_remove(contr_name, "_vs_\\w+") %>%
+             str_extract(., "(KO|WT)")
+           )) %>%
   list_rbind() %>%
-  mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
-                                log2FoldChange < 0 ~ "down",
-                                TRUE ~ NA_character_),
-         ref_sample = ifelse(str_detect(contr_name, "mock"),
-                             "All Samples VS Mock", "R77Q VS WT"))
-sig_data <- read_csv(file = paste0(
-  result_path, "tables/significant_FN_vs_BM_DEGs.csv"
-  )) %>%
-    select(-matches("(FN|BM)")) %>%
-  mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
+  mutate(ref_sample = ifelse(str_detect(contr_name, "NoAC"),
+                             "Compared to WT NoAC", "Same Timepoint KO vs WT"),
+         regulation = case_when(log2FoldChange >= 0 ~ "up",
                                 log2FoldChange < 0 ~ "down",
                                 TRUE ~ NA_character_))
 
 ############################# DEG bar plot ##################
 deg_bar_plt <- sig_data %>%
-  summarise(num_genes = n(), .by = c(regulation)) %>% 
-  ggplot(aes(regulation, num_genes, fill = regulation)) +
-  geom_col(show.legend = F, color = "#000000", linewidth = 0.3) +
-  geom_text(aes(label = num_genes),
-            vjust = -0.5, fontface = "bold",
-            size = 15, size.unit = "pt") +
+  summarise(num_genes = n(),
+            .by = c(contr_name, ref_sample, regulation,
+                    genotype, timepoint)) %>%
+  mutate(timepoint = factor(timepoint, levels = sort(unique(timepoint)))) %>%
+  ggplot(aes(contr_name, num_genes, fill = regulation)) +
+  geom_col(position = position_dodge(0.9), width = 0.85) +
+  # facet_wrap(~ref_sample, scales = "free") +
+  geom_text(aes(label = num_genes), position = position_dodge(width = 0.9),
+            vjust = -0.5, fontface = "bold", size = 4) +
   scale_fill_manual(values = c(down = "#0000FF", up = "red3"),
                     labels = c("Downregulated", "Upregulated")) +
   scale_y_continuous(expand = c(0, 0)) +
-  scale_x_discrete(breaks = c("down", "up"),
-                   labels = c("Downregulated", "Upregulated")) +
+  scale_x_discrete(expand = c(0.1, 0.1),
+                   breaks = unique(sig_data$contr_name),
+                   labels = str_replace_all(unique(sig_data$contr_name),
+                                            "_", "\n")) +
   coord_cartesian(clip = "off") +
-  labs(title = "Differentially Expressed Genes <br>of FN VS BM",
-       y = "Number of Genes", x = NULL) +
+  labs(title = paste0("Differentially Expressed Genes of *Slc38a9* ",
+                      "KO vs WT<br>at Different Timepoints Post Efferocytosis"),
+       y = "Number of Genes",
+       x = NULL,
+       fill = NULL) +
   theme_classic() +
   theme(plot.margin = margin_auto(4, 4),
         plot.title.position = "plot",
-        plot.title = element_markdown(face = 'bold', size = 16,
+        plot.title = element_markdown(face = 'bold', size = 14,
                                       colour = 'black', hjust = 0.5,
-                                      lineheight = 1.3, vjust = 0.5,
-                                      margin = margin(b = 25, t = 3)),
+                                      lineheight = 1.3, vjust = 1, 
+                                      margin = margin(2, 0, 20, 0)),
         panel.background = element_rect(fill = 'white'),
-        panel.grid.major.y = element_line(color = 'grey50', linewidth = 0.1,
+        panel.grid.major.y = element_line(color = 'grey50',
+                                          linewidth = 0.035,
                                           linetype = 1),
         panel.grid.minor = element_line(linewidth = 0.1, colour = "grey50",
                                         linetype = "dashed"),
         panel.spacing.x = unit(5, "pt"),
         #adjust axis
-        axis.text.x = element_markdown(size = 12, colour = 'black', face = 'bold',
-                                       margin = margin(t = 10)),
-        axis.text.y = element_text(size = 15, colour = 'black', face = 'bold',
-                                   margin = margin(l = 10, r = 5)),
-        axis.title.y = element_text(size = 18,
+        axis.text.x = element_text(size = 12, colour = 'black', face = 'bold',
+                                       margin = margin(t = 3)),
+        axis.text.y = element_text(size = 12, colour = 'black', face = 'bold',
+                                   margin = margin(l = 10, r = 3)),
+        axis.title.y = element_text(size = 14,
                                     face = 'bold',
                                     color = 'black'),
-        axis.ticks.x = element_blank(),
-        axis.ticks.y = element_line(color = 'grey50', linewidth = 0.1,
-                                    linetype = 1),
-        axis.ticks.length.y = unit(5, "pt")
+        axis.ticks = element_line(linewidth = 0.3, color = "black"),
+        axis.ticks.length = unit(4, "pt"),
+        axis.line = element_line(linewidth = 0.3),
+        legend.justification = c(0,1),
+        legend.position = "inside",
+        legend.position.inside = c(0.01, 1.05),
+        legend.box.background = element_rect(color = "black", linewidth = 0.3),
+        legend.text = element_text(face = 'bold', size = 9),
+        legend.background = element_blank(),
+        legend.margin = margin(t = 3, r = 3, b = 3, l = 3),
+        legend.key.size = unit(0.5, "cm"),
+        legend.key.spacing.y = unit(0.2, "cm")
   )
+
 
 ggsave(plot = deg_bar_plt,
        filename = paste0(result_path, "figures/DEG_levels_barplot.pdf"),
-       width = 6, height = 7.5)
+       width = 7.5, height = 6.8)
 
+plot_data <- sig_data %>%
+  summarise(num_genes = n(),
+            .by = c(contr_name, ref_sample, regulation,
+                    genotype, timepoint)) %>%
+  mutate(total = sum(num_genes), .by = contr_name) %>%
+  mutate(percent = round((num_genes/total) * 100, 1),
+         contr_name = factor(contr_name, levels = unique(contr_name),
+                             labels = str_replace_all(unique(contr_name), "_", " ")))
 
-
-
-p2 <- sig_data %>%
-  summarise(num_genes = n(), .by = c(regulation)) %>%
-  mutate(total = sum(num_genes)) %>%
-  mutate(percent = round((num_genes/total) * 100, 2)) %>% 
-  ggplot(aes(regulation, percent, fill = regulation)) +
+p2 <- plot_data %>%
+  ggplot(aes(regulation, percent, fill = regulation, group = contr_name)) +
   geom_col(width = 1, linewidth = 0.3) +
   geom_text(aes(label = paste0(num_genes, "\n(", percent, "%)"), y = percent/2),
             vjust = 0.5, hjust = 0.5, fontface = "bold", color = "#ffffff",
-            size = 15, size.unit = "pt") +
+            size = 11, size.unit = "pt") +
   scale_fill_manual(name = NULL,
                     values = c(down = "#0000FF", up = "red3"),
                     labels = c("Downregulated", "Upregulated")) +
   coord_radial(expand = F) +
+  facet_wrap(~contr_name, ncol = 3, scales = "free") +
   theme(axis.title = element_blank(),
         axis.text = element_blank(),
         axis.ticks = element_blank(),
+        strip.text = element_text(size = 10, face = "bold",
+                                  margin = margin(b  = -10)),
+        strip.clip = "off",
+        panel.spacing = unit(0, "pt"),
+        strip.background = element_blank(),
         legend.position = "inside",
-        legend.position.inside = c(0.5, 0.95),
-        legend.background = element_blank(),
+        legend.position.inside = c(0.7, 0.2),
+        legend.background = element_rect(colour = "black", linewidth = 0.3,
+                                         fill = NA),
         legend.key = element_rect(color = NA),
-        legend.key.spacing.x = unit(30, "pt"),
+        legend.key.spacing.y = unit(10, "pt"),
         legend.key.height = unit(5, "pt"),
         legend.key.width = unit(10, "pt"),
         legend.text = element_text(size = 12, face = "bold",
-                                   margin = margin(l = 3)),
-        legend.direction = "horizontal",
-        legend.text.position = "right")
+                                   margin = margin(l = 3)))
 
 ggsave(plot = p2,
        filename = paste0(result_path, "figures/DEG_levels_piechart1.pdf"),
-       width = 4, height = 4)
+       width = 6, height = 6)
 
-plot_data <- sig_data %>%
-  summarise(num_genes = n(), .by = c(regulation)) %>%
-  mutate(total = sum(num_genes)) %>%
-  mutate(percent = round((num_genes/total) * 100, 2)) 
 
-p3 <- plot_data %>% 
+p3 <- plot_data %>%
   ggplot(aes(x = 1, percent, fill = regulation)) +
   geom_col(width = 1) +
-  annotate(geom = "text", x = 1, y = c(25, 75),
-           label = c(paste0(plot_data$num_genes[[1]],
-                          "\n(", plot_data$percent[[1]], "%)"),
-                     paste0(plot_data$num_genes[[2]],
-                            "\n(", plot_data$percent[[2]], "%)")),
-           fontface = "bold", color = "#ffffff",
-           size = 15, size.unit = "pt"
-           ) +
+  geom_text(aes(label = paste0(num_genes, "\n(", percent, "%)"), y = percent/2),
+            x = rep(c(0.05, 0.95), 7),
+            vjust = 0.5, hjust = 0.5, fontface = "bold", color = "#ffffff",
+            size = 11, size.unit = "pt") +
+  coord_radial(expand = F, theta = "y") +
+  facet_wrap(~contr_name) +
   scale_fill_manual(name = NULL,
                     values = c(down = "#0000FF", up = "red3"),
                     labels = c("Downregulated", "Upregulated")) +
-  coord_radial(expand = F, theta = "y") +
   theme(axis.title = element_blank(),
         axis.text = element_blank(),
         axis.ticks = element_blank(),
+        strip.text = element_text(size = 10, face = "bold",
+                                  margin = margin(b  = -10)),
+        strip.clip = "off",
+        strip.background = element_blank(),
         legend.position = "inside",
-        legend.position.inside = c(0.5, 0.95),
-        legend.background = element_blank(),
+        legend.position.inside = c(0.7, 0.2),
+        legend.background = element_rect(colour = "black", linewidth = 0.3,
+                                         fill = NA),
         legend.key = element_rect(color = NA),
-        legend.key.spacing.x = unit(30, "pt"),
+        legend.key.spacing.y = unit(10, "pt"),
         legend.key.height = unit(5, "pt"),
         legend.key.width = unit(10, "pt"),
         legend.text = element_text(size = 12, face = "bold",
-                                   margin = margin(l = 3)),
-        legend.direction = "horizontal",
-        legend.text.position = "right")
+                                   margin = margin(l = 3)))
 
 ggsave(plot = p3,
        filename = paste0(result_path, "figures/DEG_levels_piechart2.pdf"),
-       width = 4.5, height = 4.5)
-
-
+       width = 6, height = 6)

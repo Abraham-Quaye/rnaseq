@@ -145,17 +145,17 @@ rule DESeq2_salmon_DE_analysis:
         fi
         """
 
-# ############# PLOT DEG BAR PLOTS #############
-# rule plot_deg_barplots:
-#     input:
-#         deg_files = rules.DESeq2_salmon_DE_analysis.output.tables,
-#         r_script = "scripts/r_code/plot_DEG_barplot.R"
-#     output:
-#         f"{proj_dir}/results/r/figures/DEG_levels_barplot.pdf",
-#         f"{proj_dir}/results/r/figures/DEG_levels_piechart1.pdf",
-#         f"{proj_dir}/results/r/figures/DEG_levels_piechart2.pdf"
-#     shell:
-#         "{input.r_script}"
+############# PLOT DEG BAR PLOTS #############
+rule plot_deg_barplots:
+    input:
+        deg_files = rules.DESeq2_salmon_DE_analysis.output.deseq_res,
+        r_script = "scripts/r_code/plot_DEG_barplot.R"
+    output:
+        f"{proj_dir}/results/r/figures/DEG_levels_barplot.pdf",
+        f"{proj_dir}/results/r/figures/DEG_levels_piechart1.pdf",
+        f"{proj_dir}/results/r/figures/DEG_levels_piechart2.pdf"
+    shell:
+        "{input.r_script}"
 
 # ############ FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
 # rule functional_enrichment_analysis:
@@ -196,5 +196,5 @@ rule DESeq2_salmon_DE_analysis:
 ############# RUN COMPLETE WORKFLOW #############
 rule run_workflow:
     input:
-        rules.DESeq2_salmon_DE_analysis.output,
+        rules.plot_deg_barplots.output,
         rules.MultiQC_all_fastqcs.output
