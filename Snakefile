@@ -120,26 +120,30 @@ rule quantify_reads_salmon:
         done
         """
          
-# ##################  DESEQ2 DIFFERENTIAL EXPRESSION ANALYSIS OF SALMON QUANT FILES #############
-# rule DESeq2_salmon_DE_analysis:
-#     input:
-#         salmon_quant = rules.quantify_reads_salmon.output,
-#         r_script = "scripts/r_code/deseq2_salmon_analysis.R",
-#         r_script2 = "scripts/r_code/DEG_plotting_functions.R",
-#     output:
-#         tables = expand(f"{proj_dir}/results/r/tables/{{res_type}}_FN_vs_BM_DEGs.csv", \
-#         res_type = ["significant", "total"]),
-#         figs = expand(f"{proj_dir}/results/r/figures/{{fig_type}}_FN_vs_BM.pdf", \
-#         fig_type = ["volcano", "heatmap", "pca", "dists"]),
-#         receptor_figs = expand(f"{proj_dir}/results/r/figures/{{fig_name}}.pdf", \
-#         fig_name = ["receptors_heatmap1_allSamples", "receptors_heatmap1_threeSamples", \
-#         "receptors_heatmap2", "receptors_composite_heatmaps_allSamples", \
-#         "receptors_composite_heatmaps_threeSamples"])
-#     shell:
-#         """
-#         {input.r_script}
-#         rm Rplots.pdf
-#         """
+##################  DESEQ2 DIFFERENTIAL EXPRESSION ANALYSIS OF SALMON QUANT FILES #############
+rule DESeq2_salmon_DE_analysis:
+    input:
+        salmon_quant = rules.quantify_reads_salmon.output,
+        r_script = "scripts/r_code/deseq2_salmon_analysis.R",
+        r_script2 = "scripts/r_code/DEG_plotting_functions.R",
+    output:
+        deseq_res = expand(f"{proj_dir}/results/r/tables/{{res_type}}_{{name}}_DEGs.csv", \
+        name = ["NoACKO_vs_NoACWT", "12hrWT_vs_NoACWT", "12hrKO_vs_NoACWT", \
+        "24hrWT_vs_NoACWT", "24hrKO_vs_NoACWT", "12hrKO_vs_12hrWT", \
+        "24hrKO_vs_24hrWT"], res_type = ["significant", "total"]),
+        figs = expand(f"{proj_dir}/results/r/figures/{{fig_type}}_{{name}}.pdf", \
+        name = ["NoACKO_vs_NoACWT", "12hrWT_vs_NoACWT", "12hrKO_vs_NoACWT", \
+        "24hrWT_vs_NoACWT", "24hrKO_vs_NoACWT", "12hrKO_vs_12hrWT", \
+        "24hrKO_vs_24hrWT"], fig_type = ["volcano", "heatmap"]),
+        pca = f"{proj_dir}/results/r/figures/sample_PCA_complete.pdf",
+        dist = f"{proj_dir}/results/r/figures/sample_distance_heatmap.pdf"
+    shell:
+        """
+        {input.r_script}
+        if [[ -e "Rplots.pdf" ]]; then
+            rm Rplots.pdf
+        fi
+        """
 
 # ############# PLOT DEG BAR PLOTS #############
 # rule plot_deg_barplots:
@@ -192,5 +196,5 @@ rule quantify_reads_salmon:
 ############# RUN COMPLETE WORKFLOW #############
 rule run_workflow:
     input:
-        rules.quantify_reads_salmon.output,
+        rules.DESeq2_salmon_DE_analysis.output,
         rules.MultiQC_all_fastqcs.output

@@ -5,10 +5,30 @@ library(ggtext)
 library(tidyverse)
 
 # the data is located in the "results/tables" folder
-result_path <- "~/bm_fn_rnaseq/results/r/" 
+result_path <- "~/bulk_slc38a9_rnaseq_aq/results/r/" 
 
 # write function to extract data needed for downstream analysis
+deg_files <- list.files(paste0(result_path, "tables"),
+                        pattern = "^significant_\\w+_DEGs\\.csv",
+                        full.names = TRUE)
 
+
+map(deg_files, ~read_csv(file = .x, id = "contr_name") %>%
+    select(-matches("(12hr|24hr|NoAC)"), -DEFINITION) %>%
+    mutate(contr_name = str_replace(contr_name,
+                                    "[/\\w]+significant_(\\w+)_DEGs\\.csv",
+                                    "\\1"),
+           ref_sample = str_remove(contr_name, "\\w+_vs_"))) %>%
+  list_rbind() %>% count(ref_sample)
+
+# read all data into one big dataframe
+deg_data <- map(deg_files, ~get_deg_tables(.x)) %>%
+  list_rbind() %>%
+  mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
+                                log2FoldChange < 0 ~ "down",
+                                TRUE ~ NA_character_),
+         ref_sample = ifelse(str_detect(contr_name, "mock"),
+                             "All Samples VS Mock", "R77Q VS WT"))
 sig_data <- read_csv(file = paste0(
   result_path, "tables/significant_FN_vs_BM_DEGs.csv"
   )) %>%
