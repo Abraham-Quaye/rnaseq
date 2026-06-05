@@ -195,23 +195,23 @@ map2(.x = deseq_results$total_res, .y = treatment_labels,
 
 # Save Data QC plots =========================
 map2(.x = deseq_results$volcano_plt, .y = treatment_labels,
-     ~ggsave(plot = .x,
-             filename = paste0(figs_path, "volcano_", .y, ".pdf"),
+     ~ggsave(plot = .x, dpi = 350,
+             filename = paste0(figs_path, "volcano_", .y, ".png"),
              width = 8, height = 8))
 
 map2(.x = deseq_results$heatmaps, .y = treatment_labels,
-     ~ggsave(plot = .x,
-             filename = paste0(figs_path, "heatmap_", .y, ".pdf"),
+     ~ggsave(plot = .x, dpi = 350,
+             filename = paste0(figs_path, "heatmap_", .y, ".png"),
              width = 6.5, height = 8))
 
 # Save Distance matrix for all samples
 ggsave(plot = plot_sample_dists(
   dds = dds, color_grp_feature = "condition",
   row_labs_feature = "condition") + theme(plot.margin = margin_auto(10, 10)),
-  filename = paste0(figs_path, "sample_distance_heatmap.pdf"),
-  height = 8, width = 8)
+  filename = paste0(figs_path, "sample_distance_heatmap.png"),
+  height = 8, width = 8, dpi = 350)
 
 ## PCA plot for all samples
 ggsave(plot = plot_PCA(dds, dds_design = "condition"),
-       filename =  paste0(figs_path, "sample_PCA_complete.pdf"),
-       height = 7, width = 8.7)
+       filename =  paste0(figs_path, "sample_PCA_complete.png"),
+       height = 7, width = 8.7, dpi = 350)

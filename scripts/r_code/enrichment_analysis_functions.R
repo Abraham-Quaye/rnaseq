@@ -7,6 +7,18 @@ get_subset_genes <- function(genes_tbl, reg){
     select(-regulation)
 }
 
+prettify_kegg_names <- function(kegg_res){
+  
+  res <- setReadable(kegg_res, OrgDb = org.Mm.eg.db,
+              keyType = "ENTREZID")
+  
+  res@result <- res@result %>%
+    mutate(Description = str_remove(Description, " - Mus musculus \\(house mouse\\)"))
+  
+  return(res)
+}
+
+
 ####### Dotplots ==============================
 plot_dotplot <- function(res, labb){
   if(is.null(res) | nrow(as_tibble(res)) == 0){return(NULL)
@@ -16,13 +28,14 @@ plot_dotplot <- function(res, labb){
     num_cat <- nrow(res)
   }
   
+  final_labb <- toupper(labb) %>% str_replace_all(., "HR", "hr")
+  
   dotplot(
     object = res,
     showCategory = num_cat,
     title = paste0("Top ", num_cat, " Enriched for ",
-                   str_replace_all(toupper(labb), "_", " ")),
-    font.size = 10.5
-  ) +
+                   str_replace_all(final_labb, "_", " ")),
+    font.size = 10.5) +
     theme(plot.title = element_text(face = "bold",
                                     size = 15, hjust = 0.5))
 }
@@ -44,8 +57,8 @@ save_kegg_results <- function(res, contr_name, labb){
      \(.x, .y){
        as_tibble(.x) %>%
          write.csv(., file = paste0(
-           result_path, "tables/kegg_",
-           .y, labb, "DEG_sigPathways.csv"),
+           enrichres_dir, "kegg",
+          labb, .y, "_sig_pathways.csv"),
            row.names = F)
        }
      )
@@ -56,8 +69,8 @@ save_go_results <- function(res, contr_name, labb){
      \(.x, .y){
        as_tibble(.x) %>%
          write.csv(., file = paste0(
-           result_path, "tables/go_",
-           .y, labb, "DEG_sig.csv"),
+           enrichres_dir, "go",
+           labb, .y, "_sig_terms.csv"),
            row.names = F)
        }
      )
@@ -71,8 +84,8 @@ save_kegg_dotplots <- function(dotplots, contr_name, labb){
        }
        ggsave(plot = .x,
              filename = paste0(
-               result_path, "figures/kegg_", .y,
-               labb, "DEG_sigPathways_dotplot.pdf"),
+               enrichfig_dir, "kegg", labb,
+               .y, "_sig_pathways_dotplot.png"),
              width = 10, height = 10)
        }
      )
@@ -86,8 +99,8 @@ save_go_dotplots <- function(dotplots, contr_name, labb){
        }
        ggsave(plot = .x,
              filename = paste0(
-               result_path, "figures/go_", .y,
-               labb, "DEG_sig_dotplot.pdf"),
+               enrichfig_dir, "go", labb,
+               .y, "_sig_terms_dotplot.png"),
              width = 10, height = 10)
        }
      )

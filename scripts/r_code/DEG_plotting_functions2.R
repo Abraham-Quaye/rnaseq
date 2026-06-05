@@ -136,19 +136,21 @@ plot_topGenes_heatmap <- function(sig_results, contr_name){
   
   # Construct the plot title
   feature_remove <- contr_name %>% str_split(., "_") %>%
-    flatten() %>% pluck(2)
+    flatten() %>% pluck(1)
   
   title_name <- contr_name %>% 
     str_replace_all(., "_", " ") %>%
+    str_remove(., feature_remove) %>% 
     toupper(.) %>%
     str_replace_all(., "HR", "hr") %>%
-    paste0("Top", n_topgenes, " DEGs for ", .,
+    paste0("Top ", n_topgenes, " DEGs for ", .,
            "\nby Adjusted P-values and Log2(Fold Change)")
   
   # Prepare Matrix to plot
   sample_cols <- contr_name %>%
-    str_split(., "_vs_") %>%
-    base::unlist()
+    str_split(., "_") %>%
+    base::unlist() %>%
+    .[c(2, 4)]
   
   top_genes <- sig_results %>%
     arrange(padj, log2FoldChange) %>%
@@ -190,7 +192,7 @@ plot_sample_dists <- function(dds, color_grp_feature, row_labs_feature){
   col_grp_features <- pull(col_grp_labs, color_grp_feature) %>% base::unique(.)
   
   ann_colors <- setNames(
-    object = list(c("blue", "red", "orange", "steelblue", "yellow", "grey50") %>%
+    object = list(c("orange", "steelblue") %>%
                     set_names(col_grp_features)),
     nm = color_grp_feature
   )
@@ -234,23 +236,21 @@ plot_PCA <- function(dds, dds_design){
   pvar <- round(attr(pcaData, "percentVar") * 100)
   
   plt <- pcaData %>%
-    ggplot(aes(PC1, PC2, fill = timepoint, shape = genotype)) +
-    geom_mark_ellipse(aes(fill = timepoint), alpha = 0.2,
-                      expand = unit(16, "pt"),
-                      show.legend = F, color = "grey30",
-                      linewidth = 0.3) +
-    geom_point(aes(fill = timepoint), size = 4,
+    ggplot(aes(PC1, PC2, fill = group)) +
+    # geom_mark_ellipse(aes(fill = group), alpha = 0.2,
+    #                   # expand = unit(5, "mm"), n = 3,
+    #                   radius = unit(0, "mm"),
+    #                   # label.buffer = unit(40, "mm"),
+    #                   # stat = "align",
+    #                   show.legend = F, color = "grey30",
+    #                   linewidth = 0.3) +
+    geom_point(aes(fill = group), size = 4, shape = 21,
                color = "#000000", stroke = 0.4) +
     coord_cartesian(clip = "off") +
-    scale_shape_manual(breaks = c("WT", "KO"), values = c(23, 21),
-                       guide = guide_legend(override.aes = list(size = 5)),
-                       name = "Genotype:") +
-    scale_fill_manual(values = c("yellow", "red", "blue") ,
-                      name = "Treatment:",
-                      breaks = unique(pcaData[["timepoint"]]),
-                      labels = c("12hr post-AC", "24hr post-AC", "No AC"),
-                      guide = guide_legend(override.aes = list(shape = 21,
-                                                               size = 5))) +
+    scale_fill_manual(values = c("steelblue", "orange") ,
+                      name = NULL,
+                      breaks = unique(pcaData[["group"]]),
+                      guide = guide_legend(override.aes = list(size = 5))) +
     labs(x = paste0("PC1: ", pvar[[1]], "% Variance"),
          y = paste0("PC2: ", pvar[[2]], "% Variance")) +
     theme_bw() +
@@ -262,15 +262,14 @@ plot_PCA <- function(dds, dds_design){
           legend.title = element_text(size = 12, face = "bold"),
           legend.text = element_text(size = 10, face = "bold",
                                      margin = margin()),
-          legend.position = "inside",
-          legend.position.inside = c(0.8, 0.8),
-          legend.margin = margin_auto(10, 10),
+          legend.position = "top",
+          legend.direction = "horizontal",
+          legend.margin = margin(),
           legend.background = element_blank(),
           legend.key.spacing.x = unit(15, "pt"),
-          legend.box.margin = margin(b = -5),
-          legend.spacing.y = unit(-10, "pt"),
-          legend.box.background = element_rect(
-            fill = NA, color = "grey20", linewidth = 0.3)
+          legend.box.margin = margin(b = -10),
+          legend.spacing.y = unit(-1, "pt"),
+          legend.box.background = element_blank()
     )
   
   return(plt)

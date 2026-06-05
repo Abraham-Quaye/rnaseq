@@ -131,29 +131,56 @@ rule DESeq2_salmon_DE_analysis:
         name = ["NoACKO_vs_NoACWT", "12hrWT_vs_NoACWT", "12hrKO_vs_NoACWT", \
         "24hrWT_vs_NoACWT", "24hrKO_vs_NoACWT", "12hrKO_vs_12hrWT", \
         "24hrKO_vs_24hrWT"], res_type = ["significant", "total"]),
-        figs = expand(f"{proj_dir}/results/r/figures/{{fig_type}}_{{name}}.pdf", \
+        figs = expand(f"{proj_dir}/results/r/figures/{{fig_type}}_{{name}}.png", \
         name = ["NoACKO_vs_NoACWT", "12hrWT_vs_NoACWT", "12hrKO_vs_NoACWT", \
         "24hrWT_vs_NoACWT", "24hrKO_vs_NoACWT", "12hrKO_vs_12hrWT", \
         "24hrKO_vs_24hrWT"], fig_type = ["volcano", "heatmap"]),
-        pca = f"{proj_dir}/results/r/figures/sample_PCA_complete.pdf",
-        dist = f"{proj_dir}/results/r/figures/sample_distance_heatmap.pdf"
+        pca = f"{proj_dir}/results/r/figures/sample_PCA_complete.png",
+        dist = f"{proj_dir}/results/r/figures/sample_distance_heatmap.png"
     shell:
         """
         {input.r_script}
-        if [[ -e "Rplots.pdf" ]]; then
+        if [[ -e "Rplots.png" ]]; then
             rm Rplots.pdf
+        fi
+        """
+####  DESEQ2 DIFFERENTIAL EXPRESSION ANALYSIS OF SALMON QUANT FILES: APPROACH 2 ####
+rule DESeq2_salmon_DE_analysis2:
+    input:
+        salmon_quant = rules.quantify_reads_salmon.output,
+        r_script = "scripts/r_code/deseq2_salmon_analysis2.R",
+        r_script2 = "scripts/r_code/DEG_plotting_functions2.R",
+    output:
+        deseq_res = expand(f"{proj_dir}/results/r/tables2/{{res_type}}_{{name}}_DEGs.csv", \
+        name = ["NoACKO_vs_NoACWT", "12hrWT_vs_NoACWT", "12hrKO_vs_NoACWT", \
+        "24hrWT_vs_NoACWT", "24hrKO_vs_NoACWT", "12hrKO_vs_12hrWT", \
+        "24hrKO_vs_24hrWT"], res_type = ["significant", "total"]),
+        figs = expand(f"{proj_dir}/results/r/figures2/{{fig_type}}_{{name}}.png", \
+        name = ["NoACKO_vs_NoACWT", "12hrWT_vs_NoACWT", "12hrKO_vs_NoACWT", \
+        "24hrWT_vs_NoACWT", "24hrKO_vs_NoACWT", "12hrKO_vs_12hrWT", \
+        "24hrKO_vs_24hrWT"], fig_type = ["volcano", "heatmap"]),
+        pca = expand(f"{proj_dir}/results/r/figures2/{{plt_type}}_{{name}}.png", \
+        name = ["NoACKO_vs_NoACWT", "12hrWT_vs_NoACWT", "12hrKO_vs_NoACWT", \
+        "24hrWT_vs_NoACWT", "24hrKO_vs_NoACWT", "12hrKO_vs_12hrWT", \
+        "24hrKO_vs_24hrWT"], plt_type = ["PCA", "sample_dists"]),
+    shell:
+        """
+        {input.r_script}
+        if [[ -e "Rplots.png" ]]; then
+            rm Rplots.png
         fi
         """
 
 ############# PLOT DEG BAR PLOTS #############
 rule plot_deg_barplots:
     input:
-        deg_files = rules.DESeq2_salmon_DE_analysis.output.deseq_res,
+        deg_files1 = rules.DESeq2_salmon_DE_analysis.output.deseq_res,
+        deg_files2 = rules.DESeq2_salmon_DE_analysis2.output.deseq_res,
         r_script = "scripts/r_code/plot_DEG_barplot.R"
     output:
-        f"{proj_dir}/results/r/figures/DEG_levels_barplot.pdf",
-        f"{proj_dir}/results/r/figures/DEG_levels_piechart1.pdf",
-        f"{proj_dir}/results/r/figures/DEG_levels_piechart2.pdf"
+        expand(f"{proj_dir}/results/r/figures/DEG_levels_{{pltname}}.png", \
+        pltname = ["barplot1", "barplot2", "piechart1a", "piechart1b", \
+        "piechart2a", "piechart2b"])
     shell:
         "{input.r_script}"
 
