@@ -29,27 +29,25 @@ get_metadata <- function(full_metadata, comparison_name){
     mutate(condition = factor(condition, levels = base::unique(condition)))
 }
 
-get_sample_names <- function(contr_name, metadata = exp_metadata){
-  
+get_sample_names <- function(contr_name, metadata){
   treatments <- str_split(contr_name, "_") %>%
-    base::unlist(.) %>% .[c(2,4)]
+    base::unlist(.) %>% .[c(1, 3)]
   
   metadata %>% filter(condition %in% treatments) %>%
     rownames()
 }
 
-
 plot_volcano <- function(lfc_res_tbl, treatment){
   # extract sample names for plot title
   samplenames <- str_split(treatment, "_") %>%
-    base::unlist(.) %>% .[c(2, 4)]
+    base::unlist(.) %>% .[c(1, 3)]
   
   plt_title <- paste0(samplenames[[1]], " vs ", samplenames[[2]])
   
   # use lfcShrink results for volcano plot
   dff <- lfc_res_tbl %>%
     drop_na(padj) %>%
-    mutate(sig = padj <= 0.05,
+    mutate(sig = padj <= 0.05 & abs(log2FoldChange) >= 1,
            reg = case_when(sig & log2FoldChange > 0 ~ "up",
                            sig & log2FoldChange < 0 ~ "down",
                            TRUE ~ "normal"),
@@ -142,7 +140,7 @@ plot_topGenes_heatmap <- function(sig_results, contr_name){
     str_replace_all(., "_", " ") %>%
     toupper(.) %>%
     str_replace_all(., "HR", "hr") %>%
-    paste0("Top", n_topgenes, " DEGs for ", .,
+    paste0("Top ", n_topgenes, " DEGs for ", .,
            "\nby Adjusted P-values and Log2(Fold Change)")
   
   # Prepare Matrix to plot

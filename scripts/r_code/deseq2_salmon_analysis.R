@@ -126,14 +126,6 @@ normalized_counts <- DESeq2::counts(dds, normalized = TRUE) %>%
 
 source("scripts/r_code/DEG_plotting_functions.R")
 
-get_sample_names <- function(contr_name, metadata){
-  treatments <- str_split(contr_name, "_") %>%
-    base::unlist(.) %>% .[c(1,3)]
-  
-  metadata %>% filter(condition %in% treatments) %>%
-    rownames()
-}
-
 deseq_results <- tibble(
   comparisons = c(
     paste0(c("NoACKO", "12hrWT", "12hrKO", "24hrWT", "24hrKO"), "_vs_NoACWT"),
@@ -168,7 +160,9 @@ deseq_results <- tibble(
                      select(gene_id, ENTREZID, SYMBOL,
                             GENENAME, DEFINITION, everything()) %>%
                      arrange(padj)),
-  sig_res = map(total_res, ~filter(.x, padj <= 0.05) %>% arrange(padj)),
+  sig_res = map(total_res, ~filter(.x, padj <= 0.05 &
+                                   abs(log2FoldChange) >= 1) %>%
+                  arrange(padj)),
   volcano_plt = map2(lfc_results_tbl, names(dds_contrasts),
                      ~plot_volcano(lfc_res_tbl = .x, treatment = .y)),
   heatmaps = map2(sig_res, names(dds_contrasts),

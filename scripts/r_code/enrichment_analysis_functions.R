@@ -45,6 +45,7 @@ get_go_enrich <- function(genes_tbl, ontology){
   enrichGO(gene = genes_tbl$gene_id,
            keyType = "ENSEMBL",
            OrgDb = org.Mm.eg.db,
+           # universe = bggenes_,
            ont = ontology,
            pAdjustMethod = "BH",
            pvalueCutoff = 0.05,

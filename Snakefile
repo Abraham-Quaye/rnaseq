@@ -187,7 +187,8 @@ rule plot_deg_barplots:
 # ############ FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
 # rule functional_enrichment_analysis:
 #     input:
-#         deg_files = rules.DESeq2_salmon_DE_analysis.output.tables,
+#         deg_files1 = rules.DESeq2_salmon_DE_analysis.output.tables,
+#         deg_files2 = rules.DESeq2_salmon_DE_analysis2.output.tables,
 #         r_script = "scripts/r_code/enrichment_analysis.R",
 #         rscript2 = "scripts/r_code/enrichment_analysis_functions.R" 
 #     output:

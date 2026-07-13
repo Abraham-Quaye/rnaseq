@@ -139,7 +139,8 @@ process_dds_results <- function(dds_local, treatments){
                             dplyr::select(-c(baseMean, lfcSE)) %>%
                             dplyr::select(gene_id, ENTREZID, SYMBOL,
                                           GENENAME, DEFINITION, everything())),
-         sig_res = map(total_res, ~filter(.x, padj <= 0.05)),
+         sig_res = map(total_res, ~filter(.x, padj <= 0.05 &
+                                            abs(log2FoldChange) >= 1)),
          volcano_plt = map2(lfc_results_tbl, treatments,
                             ~plot_volcano(lfc_res_tbl = .x, treatment = .y)),
          heatmaps = map2(sig_res, treatments, ~plot_topGenes_heatmap(.x, .y)),

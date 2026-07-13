@@ -49,7 +49,7 @@ plot_volcano <- function(lfc_res_tbl, treatment){
   # use lfcShrink results for volcano plot
   dff <- lfc_res_tbl %>%
     drop_na(padj) %>%
-    mutate(sig = padj <= 0.05,
+    mutate(sig = padj <= 0.05 & abs(log2FoldChange) >= 1,
            reg = case_when(sig & log2FoldChange > 0 ~ "up",
                            sig & log2FoldChange < 0 ~ "down",
                            TRUE ~ "normal"),
