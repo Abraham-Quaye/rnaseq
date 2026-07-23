@@ -160,8 +160,7 @@ deseq_results <- tibble(
                      select(gene_id, ENTREZID, SYMBOL,
                             GENENAME, DEFINITION, everything()) %>%
                      arrange(padj)),
-  sig_res = map(total_res, ~filter(.x, padj <= 0.05 &
-                                   abs(log2FoldChange) >= 1) %>%
+  sig_res = map(total_res, ~filter(.x, padj <= 0.05) %>%
                   arrange(padj)),
   volcano_plt = map2(lfc_results_tbl, names(dds_contrasts),
                      ~plot_volcano(lfc_res_tbl = .x, treatment = .y)),

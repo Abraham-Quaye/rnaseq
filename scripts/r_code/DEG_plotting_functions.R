@@ -47,7 +47,7 @@ plot_volcano <- function(lfc_res_tbl, treatment){
   # use lfcShrink results for volcano plot
   dff <- lfc_res_tbl %>%
     drop_na(padj) %>%
-    mutate(sig = padj <= 0.05 & abs(log2FoldChange) >= 1,
+    mutate(sig = padj <= 0.05,
            reg = case_when(sig & log2FoldChange > 0 ~ "up",
                            sig & log2FoldChange < 0 ~ "down",
                            TRUE ~ "normal"),
@@ -80,7 +80,8 @@ plot_volcano <- function(lfc_res_tbl, treatment){
                         label = SYMBOL), max.overlaps = 40,
                     min.segment.length = 0, fontface = "bold",
                     box.padding = 1.5, point.padding = 0.5,
-                    show.legend = F, size = 3.5) +
+                    show.legend = F, size = 3.5,
+                    color = "#000000") +
     geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
     scale_y_continuous(expand = c(0.025, 0.025)) +
     scale_x_continuous(expand = c(0, 0),
