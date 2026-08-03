@@ -16,15 +16,29 @@ plot_dotplot <- function(res, labb){
     num_cat <- nrow(res)
   }
   
+  res@result <- res@result %>%
+    mutate(Description = str_remove_all(Description,
+                                        " - Mus musculus \\(house mouse\\)"),
+           p.adjust = as.numeric(p.adjust)) 
+  
   dotplot(
     object = res,
     showCategory = num_cat,
     title = paste0("Top ", num_cat, " Enriched for ",
                    str_replace_all(toupper(labb), "_", " ")),
-    font.size = 10.5
-  ) +
+    font.size = 10.5) +
+    scale_fill_gradientn(name = "P adjusted",
+                         colors = c("blue", "grey", "red"),
+                         values = scales::rescale(
+                           c(max(p_lims), 0, min(p_lims))
+                         )) +
+    labs(size =  "Gene\nCount") +
     theme(plot.title = element_text(face = "bold",
-                                    size = 15, hjust = 0.5))
+                                    size = 15, hjust = 0.5), 
+          legend.title = element_text(face = "bold"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor = element_blank(),
+          panel.grid.major.y = element_line(linewidth = 0.15, color = "black"))
 }
 
 ####################### For GO Analysis #######################

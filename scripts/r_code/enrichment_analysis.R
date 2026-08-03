@@ -16,9 +16,9 @@ library(circlize)
 library(tidyverse)
 
 # the data is located in the "results/tables" folder
-result_path <- "~/bm_fn_rnaseq/results/r/"
+result_path <- "~/bulk_cre_gfp/results/r/"
 
-contr <- "FN_vs_BM"
+contr <- "Cre_vs_GFP"
 # load functions ==================
 source("scripts/r_code/enrichment_analysis_functions.R")
 
@@ -89,13 +89,13 @@ target_pathways <- c("Efferocytosis", "Focal adhesion", "Lysosome biogenesis",
 sub_enrichkegg@result <- sub_enrichkegg@result %>%
   mutate(Description = str_remove_all(Description,
                                       " - Mus musculus \\(house mouse\\)"),
-         p.adjust = as.numeric(p.adjust)) %>% 
-  filter(Description %in% target_pathways)
+         p.adjust = as.numeric(p.adjust)) #%>% 
+  # filter(Description %in% target_pathways)
 
 p_lims <- pull(sub_enrichkegg@result, p.adjust)
 
 interest_kegg_dot <- dotplot(object = sub_enrichkegg,
-                             showCategory = 10,
+                             showCategory = 20,
         title = "Significantly Enriched KEGG Pathways",
         font.size = 10.5) +
   scale_fill_gradientn(name = "P adjusted",
@@ -122,7 +122,7 @@ gsea_list <- gsea_list[!is.na(names(gsea_list))]
 gsea_list <- gsea_list[!duplicated(names(gsea_list))]
 
 cnet1 <- cnetplot(sub_enrichkegg, foldChange = gsea_list,
-                  showCategory = 8, color_category = "black",
+                  showCategory = 12, color_category = "black",
                   node_label = "item", curvature = 0.2) +
   geom_cnet_label(node_label = "category",
                   size = 4.5, fontface = "bold",
@@ -199,21 +199,19 @@ chordplot <- GOChord(chord_mat, space = 0.01,
         lfc.col = c("red", "white", "blue"),
         lfc.max = 10, lfc.min = -10,
         border.size = 0,
-        ribbon.col = viridis::viridis(n = 8)) +
-  annotate(geom = "text",
-           x = c(0.38, 0.98, 1.17, 1.35, 1.32, 1.28, 0.9, 0.45),
-           y = c(1.12, 0.95, 0.65, 0.25, -0.2, -0.6, -0.9, -1.15),
-           label = target_plabs,
-           fontface = "bold", size = 6) +
+        ribbon.col = viridis::viridis(n = 25)) +
+  # annotate(geom = "text",
+  #          x = c(0.38, 0.98, 1.17, 1.35, 1.32, 1.28, 0.9, 0.45),
+  #          y = c(1.12, 0.95, 0.65, 0.25, -0.2, -0.6, -0.9, -1.15),
+  #          label = target_plabs,
+  #          fontface = "bold", size = 6) +
   coord_equal(clip = "off") +
   scale_fill_gradientn(name = "log2FC\n(FN vs BM)",
                        colors = c("red", "grey", "blue"),
-                       values = scales::rescale(
-                         c(max(circ_data$logFC), 0,
-                           min(circ_data$logFC))
-                       )) +
-  theme(plot.margin = margin(r = 100, l = 0,
-                             t = 0, b = 0),
+                       rescaler = ~ scales::rescale_mid(.x, mid = 0)) +
+  theme(
+        # plot.margin = margin(r = 100, l = 0,
+        #                      t = 0, b = 0),
         legend.box.margin = margin(l = 15),
         legend.title.position = "top",
         legend.text = element_text(hjust = 0.5),

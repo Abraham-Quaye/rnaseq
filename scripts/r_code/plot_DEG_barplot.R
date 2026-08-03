@@ -5,14 +5,14 @@ library(ggtext)
 library(tidyverse)
 
 # the data is located in the "results/tables" folder
-result_path <- "~/bm_fn_rnaseq/results/r/" 
+result_path <- "~/bulk_cre_gfp/results/r/" 
 
 # write function to extract data needed for downstream analysis
 
 sig_data <- read_csv(file = paste0(
-  result_path, "tables/significant_FN_vs_BM_DEGs.csv"
+  result_path, "tables/significant_Cre_vs_GFP_DEGs.csv"
   )) %>%
-    select(-matches("(FN|BM)")) %>%
+    select(-matches("(Cre|GFP)")) %>%
   mutate(regulation = case_when(log2FoldChange >= 0 ~ "up",
                                 log2FoldChange < 0 ~ "down",
                                 TRUE ~ NA_character_))

@@ -5,7 +5,7 @@ plot_volcano <- function(lfc_res_tbl, treatment){
     samplenames <- str_split(treatment, "_") %>%
         base::unlist(.) %>% .[c(2,4)]
     
-    plt_title <- "MYOCD VS GFP Control"
+    plt_title <- "Cre VS GFP Control"
     
     # use lfcShrink results for volcano plot
     dff <- lfc_res_tbl %>%

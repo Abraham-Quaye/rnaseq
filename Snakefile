@@ -49,17 +49,17 @@ rule build_salmon_genomic_index:
         salmon index -t {input.gentrome} -d {input.decoy} -p 15 -i {output} -k 31
         """
 
-proj_dir = "/Users/abrahamquaye/bm_fn_rnaseq"
+proj_dir = "/Users/abrahamquaye/bulk_cre_gfp"
 
 ############### TRIM READS WITH TRIM GALORE ####################
 rule trim_fastq_files:
     input:
-        raw_fastqs = expand(f"{proj_dir}/raw_files/raw_fastqs/{{sample}}{{snum}}_R{{strand}}_001.fastq.gz", \
-        sample = ["BM", "FN"], snum = range(1, 5), strand = [1, 2]),
+        raw_fastqs = expand(f"{proj_dir}/raw_files/raw_fastqs/{{sample}}_S{{snum}}_R{{strand}}.fastq.gz", \
+        sample = ["Cre", "GFP"], snum = range(1, 5), strand = [1, 2]),
         script = "scripts/shell/trim_reads.sh"
     output:
-        t_fastqs = expand(f"{proj_dir}/results/trimmedReads/{{sample}}{{snum}}_R{{strand}}_001_val_{{strand}}.fq.gz", \
-        sample = ["BM", "FN"], snum = range(1, 5), strand = [1, 2])
+        t_fastqs = expand(f"{proj_dir}/results/trimmedReads/{{sample}}_S{{snum}}_R{{strand}}_val_{{strand}}.fq.gz", \
+        sample = ["Cre", "GFP"], snum = range(1, 5), strand = [1, 2])
     shell:
         "{input.script}"
 
@@ -68,8 +68,8 @@ rule FastQC_trimmed_reads:
     input:
         t_fastqs = rules.trim_fastq_files.output.t_fastqs
     output:
-        t_fastqc = expand(f"{proj_dir}/results/fastqc/{{sample}}{{snum}}_R{{strand}}_001_val_{{strand}}_fastqc.{{ext}}", \
-        ext = ["html", "zip"], sample = ["BM", "FN"], snum = range(1, 5), strand = [1, 2]),
+        t_fastqc = expand(f"{proj_dir}/results/fastqc/{{sample}}_S{{snum}}_R{{strand}}_val_{{strand}}_fastqc.{{ext}}", \
+        ext = ["html", "zip"], sample = ["Cre", "GFP"], snum = range(1, 5), strand = [1, 2]),
         fastqc_dir = directory(f"{proj_dir}/results/fastqc")
     shell:
         """
@@ -99,8 +99,8 @@ rule quantify_reads_salmon:
         t_fastqs = rules.trim_fastq_files.output.t_fastqs,
         salmon_index = rules.build_salmon_genomic_index.output
     output:
-        expand(f"{proj_dir}/results/salmon_quant/quant_{{sample}}{{snum}}/quant.sf", \
-        sample = ["BM", "FN"], snum = range(1, 5))
+        expand(f"{proj_dir}/results/salmon_quant/quant_{{sample}}_S{{snum}}/quant.sf", \
+        sample = ["Cre", "GFP"], snum = range(1, 5))
     params:
         trim_dir = f"{proj_dir}/results/trimmedReads",
         salmon_dir = f"{proj_dir}/results/salmon_quant"
@@ -111,12 +111,12 @@ rule quantify_reads_salmon:
         tr ' ' '\n' | grep '_val_1.fq.gz') )
 
         for fread in ${{forward_fastqs[@]}}; do
-            sample_id=$(basename ${{fread}} | cut -d "_" -f 1);
+            sample_id=$(basename ${{fread}} | cut -d "_" -f 1,2);
             echo "Quantifying reads for ${{sample_id}} ...";
 
             salmon quant -i {input.salmon_index} -l A \\
             -1 ${{fread}} \\
-            -2 {params.trim_dir}/${{sample_id}}_R2_001_val_2.fq.gz \\
+            -2 {params.trim_dir}/${{sample_id}}_R2_val_2.fq.gz \\
             -p 15 --validateMappings -o {params.salmon_dir}/quant_${{sample_id}};
         done
         """
@@ -128,14 +128,10 @@ rule DESeq2_salmon_DE_analysis:
         r_script = "scripts/r_code/deseq2_salmon_analysis.R",
         r_script2 = "scripts/r_code/DEG_plotting_functions.R",
     output:
-        tables = expand(f"{proj_dir}/results/r/tables/{{res_type}}_FN_vs_BM_DEGs.csv", \
+        tables = expand(f"{proj_dir}/results/r/tables/{{res_type}}_Cre_vs_GFP_DEGs.csv", \
         res_type = ["significant", "total"]),
-        figs = expand(f"{proj_dir}/results/r/figures/{{fig_type}}_FN_vs_BM.pdf", \
-        fig_type = ["volcano", "heatmap", "pca", "dists"]),
-        receptor_figs = expand(f"{proj_dir}/results/r/figures/{{fig_name}}.pdf", \
-        fig_name = ["receptors_heatmap1_allSamples", "receptors_heatmap1_threeSamples", \
-        "receptors_heatmap2", "receptors_composite_heatmaps_allSamples", \
-        "receptors_composite_heatmaps_threeSamples"])
+        figs = expand(f"{proj_dir}/results/r/figures/{{fig_type}}_Cre_vs_GFP.pdf", \
+        fig_type = ["volcano", "heatmap", "pca", "dists"])
     shell:
         """
         {input.r_script}
@@ -154,45 +150,46 @@ rule plot_deg_barplots:
     shell:
         "{input.r_script}"
 
-############ FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
-rule functional_enrichment_analysis:
-    input:
-        deg_files = rules.DESeq2_salmon_DE_analysis.output.tables,
-        r_script = "scripts/r_code/enrichment_analysis.R",
-        rscript2 = "scripts/r_code/enrichment_analysis_functions.R" 
-    output:
-        kegg_res = expand(f"{proj_dir}/results/r/tables/kegg_FN_vs_BM_{{reg}}DEG_sigPathways.csv", \
-        reg = ["up", "down", "total"]),
-        go_res = expand(f"{proj_dir}/results/r/tables/go_FN_vs_BM_{{reg}}DEG_sig.csv", \
-        reg = ["up", "down", "total"]),
-        go_figs = expand(f"{proj_dir}/results/r/figures/go_FN_vs_BM_{{reg}}DEG_sig_dotplot.pdf", \
-        reg = ["up", "down", "total"]),
-        kegg_figs = expand(f"{proj_dir}/results/r/figures/kegg_FN_vs_BM_{{reg}}DEG_sigPathways_dotplot.pdf", \
-        reg = ["up", "down", "total"]),
-        kegg_diagrams = directory(f"{proj_dir}/results/r/figures/kegg_pathway_diagrams"),
-        cnet_fig = f"{proj_dir}/results/r/figures/cnet_enrich_pathways.pdf",
-        filt_dotplot = f"{proj_dir}/results/r/figures/kegg_FN_vs_BM_interestPathways_dotplot.pdf",
-        chord_fig = f"{proj_dir}/results/r/figures/kegg_FN_vs_BM_chordplot.pdf"
-    shell:
-        """
-        {input.r_script}
-        # test if kegg diagrams were generated and move them to the output directory
-        path_figs=( mmu*.pathview.png )
-        if [[ -e "${{path_figs[0]}}" ]]; then
-            echo "Moving KEGG pathway diagrams to correct directory ..."
-            mv mmu*.pathview.png {output.kegg_diagrams}
-        else
-            echo "No KEGG pathway diagrams were generated."
-        fi
+# ############ FUNCTIONAL ENRICHMENT ANALYSES OF DEGs #############
+# rule functional_enrichment_analysis:
+#     input:
+#         deg_files = rules.DESeq2_salmon_DE_analysis.output.tables,
+#         r_script = "scripts/r_code/enrichment_analysis.R",
+#         rscript2 = "scripts/r_code/enrichment_analysis_functions.R" 
+#     output:
+#         kegg_res = expand(f"{proj_dir}/results/r/tables/kegg_Cre_vs_GFP_{{reg}}DEG_sigPathways.csv", \
+#         reg = ["up", "down", "total"]),
+#         go_res = expand(f"{proj_dir}/results/r/tables/go_Cre_vs_GFP_{{reg}}DEG_sig.csv", \
+#         reg = ["up", "down", "total"]),
+#         go_figs = expand(f"{proj_dir}/results/r/figures/go_Cre_vs_GFP_{{reg}}DEG_sig_dotplot.pdf", \
+#         reg = ["up", "down", "total"]),
+#         kegg_figs = expand(f"{proj_dir}/results/r/figures/kegg_Cre_vs_GFP_{{reg}}DEG_sigPathways_dotplot.pdf", \
+#         reg = ["up", "down", "total"]),
+#         kegg_diagrams = directory(f"{proj_dir}/results/r/figures/kegg_pathway_diagrams"),
+#         cnet_fig = f"{proj_dir}/results/r/figures/cnet_enrich_pathways.pdf",
+#         filt_dotplot = f"{proj_dir}/results/r/figures/kegg_Cre_vs_GFP_interestPathways_dotplot.pdf",
+#         chord_fig = f"{proj_dir}/results/r/figures/kegg_Cre_vs_GFP_chordplot.pdf"
+#     shell:
+#         """
+#         {input.r_script}
+#         # test if kegg diagrams were generated and move them to the output directory
+#         path_figs=( mmu*.pathview.png )
+#         if [[ -e "${{path_figs[0]}}" ]]; then
+#             echo "Moving KEGG pathway diagrams to correct directory ..."
+#             mv mmu*.pathview.png {output.kegg_diagrams}
+#         else
+#             echo "No KEGG pathway diagrams were generated."
+#         fi
         
-        if [[ -e "Rplot.pdf" ]]; then
-            rm Rplot.pdf
-        fi
-        """
+#         if [[ -e "Rplot.pdf" ]]; then
+#             rm Rplot.pdf
+#         fi
+#         """
 
 ############# RUN COMPLETE WORKFLOW #############
 rule run_workflow:
     input:
         rules.MultiQC_all_fastqcs.output,
-        rules.plot_deg_barplots.output,
-        rules.functional_enrichment_analysis.output
+        rules.quantify_reads_salmon.output,
+        rules.plot_deg_barplots.output
+        # rules.functional_enrichment_analysis.output

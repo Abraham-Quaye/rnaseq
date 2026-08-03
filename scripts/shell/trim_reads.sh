@@ -1,10 +1,10 @@
 #!/opt/homebrew/bin/bash
 
-fastqdir="/Users/abrahamquaye/bm_fn_rnaseq/raw_files/raw_fastqs"
-trimdir="/Users/abrahamquaye/bm_fn_rnaseq/results/trimmedReads"
+fastqdir="/Users/abrahamquaye/bulk_cre_gfp/raw_files/raw_fastqs"
+trimdir="/Users/abrahamquaye/bulk_cre_gfp/results/trimmedReads"
 
-forReads=( $fastqdir/*_R1_001.fastq.gz )
-revReads=( $fastqdir/*_R2_001.fastq.gz )
+forReads=( $fastqdir/*_R1.fastq.gz )
+revReads=( $fastqdir/*_R2.fastq.gz )
 
 if [ ${#forReads[@]} -ne ${#revReads[@]} ]; then
     echo "Number of forward reads do not match number of reverse reads"
@@ -14,9 +14,9 @@ fi
 mkdir -p $trimdir
 
 for n in ${!forReads[@]}; do
-    fname=$(echo ${forReads[$n]##*/} | cut -d "_" -f1,2)
+    fname=$(echo ${forReads[$n]##*/} | cut -d "." -f1)
     fread=${forReads[$n]}
-    rname=$(echo ${revReads[$n]##*/} | cut -d "_" -f1,2)
+    rname=$(echo ${revReads[$n]##*/} | cut -d "." -f1)
     rread=${revReads[$n]}
 
     echo "Trimming $fname and $rname ..."
